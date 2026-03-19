@@ -834,50 +834,57 @@ window.generateContract = function(id) {
     const dYear = dueDate.getFullYear();
 
     printArea.innerHTML = `
-        <div class="contract-paper">
+        <div class="contract-paper formal-mode">
+            <div class="contract-meta" style="text-align: right; font-size: 10pt; color: #666; margin-bottom: 20px;">
+                Cusco, ${lDay} de ${lMonth} del ${lYear} | <strong>REGISTRO N°: ${loan.id.slice(0,8).toUpperCase()}</strong>
+            </div>
+
             <div class="contract-header">
-                <center><h2 style="text-decoration: underline; margin-bottom: 30px;">CONTRATO DE MUTUO CON FIRMA Y HUELLA</h2></center>
-                <p>Conste por el presente documento el Contrato de Mutuo (Préstamo de Dinero) que celebran:</p>
+                <center>
+                    <h2 style="text-decoration: underline; margin-bottom: 5px; font-size: 18pt;">CONTRATO DE MUTUO (PRÉSTAMO DE DINERO)</h2>
+                    <p style="font-size: 10pt; font-style: italic; margin-bottom: 30px;">Conste por el presente documento privado de reconocimiento de deuda y compromiso de pago;</p>
+                </center>
             </div>
             
             <div class="contract-content">
-                <p><strong>EL PRESTAMISTA:</strong> Juan David Puclla Quispe, identificado con <strong>DNI N° 60257586</strong>, con domicilio en la ciudad de Cusco.</p>
+                <p><strong>I. LAS PARTES:</strong></p>
+                <p><strong>EL PRESTAMISTA:</strong> Don <strong>Juan David Puclla Quispe</strong>, identificado con <strong>DNI N° 60257586</strong>, domiciliado en el departamento de Cusco.</p>
 
-                <p><strong>EL PRESTATARIO:</strong> <strong>${loan.name}</strong>, identificado con <strong>DNI N° ${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '...................................................'}</strong>, con número de contacto (WhatsApp) <strong>${loan.phone || '........................................'}</strong>.</p>
+                <p><strong>EL PRESTATARIO:</strong> Don/Doña <strong>${loan.name}</strong>, identificado(a) con <strong>DNI N° ${loan.dni || '..........'}</strong>, con domicilio real en <strong>${loan.address || '...................................................'}</strong> y número de contacto/WhatsApp <strong>${loan.phone || '........................................'}</strong>.</p>
 
-                <p>Ambas partes acuerdan lo siguiente:</p>
+                <p><strong>II. CLÁUSULAS:</strong></p>
 
-                <p><strong>PRIMERA: OBJETO Y ENTREGA</strong><br>
-                EL PRESTAMISTA entrega en este acto la suma de <strong>S/ ${amountStr} (${amountWords} y 00/100 Soles)</strong>. EL PRESTATARIO declara haber recibido dicha suma a su entera satisfacción mediante [ ] Efectivo / [ ] Transferencia (Yape/Plin).</p>
+                <p><strong>PRIMERA (EL MONTO):</strong><br>
+                EL PRESTAMISTA entrega en calidad de mutuo al PRESTATARIO la suma líquida de <strong>S/ ${amountStr} (${amountWords} y 00/100 Soles)</strong>. EL PRESTATARIO declara bajo juramento haber recibido dicha cantidad a su entera satisfacción mediante: <strong>[ ] Efectivo / [ ] Transferencia Electrónica</strong>.</p>
 
-                <p><strong>SEGUNDA: INTERESES Y MONTO TOTAL</strong><br>
-                El préstamo genera un interés pactado de <strong>S/ ${interestStr}</strong>. Por lo tanto, la suma total que EL PRESTATARIO se obliga a devolver es de <strong>S/ ${totalStr} (${totalWords} y 00/100 Soles)</strong>.</p>
+                <p><strong>SEGUNDA (LOS INTERESES Y TOTAL):</strong><br>
+                Las partes pactan un interés compensatorio de <strong>S/ ${interestStr}</strong>. Sumando ambos conceptos, EL PRESTATARIO reconoce una obligación total de pago de <strong>S/ ${totalStr} (${totalWords} y 00/100 Soles)</strong>.</p>
 
-                <p><strong>TERCERA: PLAZO DE DEVOLUCIÓN</strong><br>
-                EL PRESTATARIO se compromete a devolver el monto total (capital e intereses) en una sola armada, a más tardar el día: <strong>${dDay} de ${dMonth} del ${dYear}</strong>.</p>
+                <p><strong>TERCERA (PLAZO):</strong><br>
+                EL PRESTATARIO se obliga irrevocablemente a la devolución del capital e intereses en una única cuota, teniendo como fecha de vencimiento fatal el día <strong>${dDay} de ${dMonth} del ${dYear}</strong>.</p>
 
-                <p><strong>CUARTA: MORA AUTOMÁTICA</strong><br>
-                Por cada día de retraso en la fecha pactada, se aplicará una penalidad por mora de <strong>S/ ${PENALTY_PER_DAY.toFixed(2)} (Cero con 50/100 Soles)</strong> por día. Esta penalidad se acumulará diariamente hasta la cancelación total de la deuda.</p>
+                <p><strong>CUARTA (MORA):</strong><br>
+                A partir del día siguiente del vencimiento, se generará una penalidad diaria por mora de <strong>S/ ${PENALTY_PER_DAY.toFixed(2)}</strong> (Cero con 50/100 Soles). Esta penalidad es acumulativa y no requiere notificación previa.</p>
 
-                <p><strong>QUINTA: ALLANAMIENTO Y DOMICILIO</strong><br>
-                EL PRESTATARIO se somete a la cláusula de allanamiento anticipado (Ley 30201) para agilizar cualquier proceso de cobro. Asimismo, ambas partes fijan su domicilio legal en la ciudad de Cusco para cualquier notificación judicial.</p>
+                <p><strong>QUINTA (JURISDICCIÓN):</strong><br>
+                Para todos los efectos legales, las partes se someten a la competencia de los jueces y tribunales del Distrito Judicial de Cusco, renunciando al fuero de sus domicilios.</p>
 
-                <p><strong>SEXTA: CONFORMIDAD</strong><br>
-                En señal de plena conformidad, las partes firman y estampan su huella digital en la localidad de <strong>Cusco</strong>, el día <strong>${lDay} de ${lMonth} del ${lYear}</strong>.</p>
+                <p><strong>SEXTA (CONFORMIDAD):</strong><br>
+                En señal de absoluta conformidad y validez de lo aquí pactado, las partes firman y estampan su huella digital en la ciudad de <strong>Cusco</strong>, a los <strong>${lDay} días del mes de ${lMonth} del año ${lYear}</strong>.</p>
             </div>
 
-            <div class="sig-container" style="margin-top: 100px; display: flex; justify-content: space-between;">
-                <div class="sig-box" style="text-align: center; width: 45%;">
-                    <br>..................................................<br>
+            <div class="sig-container" style="margin-top: 120px; display: flex; justify-content: space-between;">
+                <div class="sig-box" style="text-align: center; width: 42%; border-top: 1px solid #000; padding-top: 10px;">
                     <strong>EL PRESTAMISTA</strong><br>
-                    <strong>DNI: 60257586</strong><br>
-                    <strong>Huella:</strong>
+                    Juan David Puclla Quispe<br>
+                    DNI: 60257586<br><br>
+                    <div style="border: 1px solid #ccc; width: 60px; height: 80px; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #999;">Huella</div>
                 </div>
-                <div class="sig-box" style="text-align: center; width: 45%;">
-                    <br>..................................................<br>
+                <div class="sig-box" style="text-align: center; width: 42%; border-top: 1px solid #000; padding-top: 10px;">
                     <strong>EL PRESTATARIO</strong><br>
-                    <strong>DNI: ${loan.dni || '..........'}</strong><br>
-                    <strong>Huella:</strong>
+                    ${loan.name}<br>
+                    DNI: ${loan.dni || '..........'}<br><br>
+                    <div style="border: 1px solid #ccc; width: 60px; height: 80px; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #999;">Huella</div>
                 </div>
             </div>
         </div>
