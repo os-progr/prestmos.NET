@@ -341,9 +341,7 @@ function calcTotalPay(amount, rate, mode = 'percent') {
 function calculatePenalty(loan) {
     const today = new Date();
     today.setHours(0,0,0,0);
-    
-    const due = new Date(loan.dueDate);
-    due.setHours(0,0,0,0);
+    const due = new Date(loan.dueDate + 'T12:00:00');
     
     const diffTime = today - due;
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -656,8 +654,6 @@ function renderTable(dataToRender) {
             const { diffDays } = calculatePenalty(loan);
             const status = getStatus(loan, restante, diffDays);
             
-            const hasPhotos = loan.images && (loan.images.dni || loan.images.payment || loan.images.light);
-
             const tr = document.createElement('tr');
             tr.style.animationDelay = `${idx * 0.05}s`;
             tr.className = 'fade-in';
@@ -665,7 +661,6 @@ function renderTable(dataToRender) {
                 <td>
                     <div class="client-name">${loan.name}</div>
                     ${loan.phone ? `<div class="client-notes"><i data-lucide="smartphone" style="width:12px;color: #25D366;"></i> <a href="https://wa.me/${loan.phone.replace(/[^0-9]/g, '')}" target="_blank" style="color:#25D366; text-decoration:none;">${loan.phone}</a></div>` : ''}
-                    ${loan.notes ? `<div class="client-notes"><i data-lucide="tag" style="width:12px"></i> ${loan.notes}</div>` : ''}
                 </td>
                 <td class="font-bold">S/ ${loan.total.toFixed(2)}</td>
                 <td class="${mora > 0 ? 'text-danger font-bold' : 'text-muted'}">
@@ -689,11 +684,6 @@ function renderTable(dataToRender) {
                     <button class="btn btn-icon btn-contract" onclick="generateContract('${loan.id}')" title="Imprimir Pagaré / Contrato">
                         <i data-lucide="printer"></i> <span>Pagaré</span>
                     </button>
-                    ${hasPhotos ? `
-                    <button class="btn btn-icon btn-view" onclick="openPhotosModal('${loan.id}')" title="Ver Documentos">
-                        <i data-lucide="paperclip"></i> <span>Fotos</span>
-                    </button>
-                    ` : ''}
                     <button class="btn btn-icon btn-edit" onclick="startEditMode('${loan.id}')" title="Editar Info">
                         <i data-lucide="edit"></i> <span>Edit</span>
                     </button>
@@ -763,30 +753,6 @@ function updateMetrics() {
     clientsCountEl.textContent = activeClients;
 
     updateChartData(totalC, totalI, totalP);
-}
-
-window.openPhotosModal = function(id) {
-    const loan = loans.find(l => l.id === id);
-    if (!loan) return;
-    modalTitle.textContent = `Carpeta de Documentos`;
-    modalGallery.innerHTML = '';
-    
-    let cnt = 0;
-    if (loan.images) {
-        const labels = { dni: "Foto DNI", payment: "Voucher", light: "Recibo Luz" };
-        for (const [key, base64str] of Object.entries(loan.images)) {
-            if (base64str) {
-                cnt++;
-                modalGallery.innerHTML += `
-                    <div class="gallery-item fade-in" style="animation-delay: ${cnt * 0.1}s">
-                        <span class="text-sm text-secondary font-bold">${labels[key]}</span>
-                        <img src="${base64str}" class="gallery-image" onclick="window.open('${base64str}', '_blank')">
-                    </div>`;
-            }
-        }
-    }
-    modalEmpty.classList.toggle('hidden', cnt === 0);
-    document.getElementById('image-modal').classList.remove('hidden');
 }
 
 window.closeModal = function(modalId) {

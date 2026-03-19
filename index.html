@@ -217,10 +217,7 @@
                                 <span>Retorno Total Esperado:</span>
                                 <strong id="preview-total" class="text-accent">S/ 0.00</strong>
                             </div>
-                            <div class="preview-row" id="preview-quota-row" style="display:none;">
-                                <span>Monto aprox. por Cuota:</span>
-                                <strong id="preview-quota-amt">S/ 0.00</strong>
-                            </div>
+
                         </div>
 
                         <div class="form-actions mt-4">
@@ -297,20 +294,6 @@
         </main>
     </div>
 
-    <!-- MODAL PARA VER FOTOS -->
-    <div id="image-modal" class="modal hidden fade-in">
-        <div class="modal-overlay" onclick="closeModal('image-modal')"></div>
-        <div class="modal-content glass-modal">
-            <button class="modal-close" onclick="closeModal('image-modal')"><i data-lucide="x"></i></button>
-            <h3 class="modal-title" id="modal-title">Documentos</h3>
-            <div class="modal-gallery" id="modal-gallery"></div>
-            <div id="modal-empty" class="hidden text-center text-muted mt-4">
-                <i data-lucide="image-off" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></i>
-                <p>No hay documentos adjuntos.</p>
-            </div>
-        </div>
-    </div>
-
     <!-- MODAL PARA AGREGAR ABONOS -->
     <div id="pay-modal" class="modal hidden fade-in">
         <div class="modal-overlay" onclick="closeModal('pay-modal')"></div>
@@ -344,7 +327,6 @@
             <div class="mt-4 pt-4" style="border-top:1px solid rgba(255,255,255,0.1);">
                 <div class="flex-between mb-2">
                     <h4 class="text-sm text-secondary">Historial de Pagos</h4>
-                    <span id="pay-quota-info" class="badge"></span>
                 </div>
                 <div id="pay-history" class="pay-history-list"></div>
             </div>
