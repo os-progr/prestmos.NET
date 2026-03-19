@@ -761,70 +761,119 @@ window.sendReminder = function(id) {
     window.open(url, '_blank');
 }
 
+/* =========================================
+   CONTRACT GENERATION (CONTRATO DE MUTUO)
+========================================= */
+function numberToWords(n) {
+    const ones = ['', 'UNO', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE'];
+    const tens = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+    const teens = ['DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE', 'DIECIOCHO', 'DIECINUEVE'];
+    
+    if (n === 0) return 'CERO';
+    if (n < 0) return 'MENOS ' + numberToWords(Math.abs(n));
+    
+    let words = '';
+    
+    if (n >= 1000000) {
+        let millions = Math.floor(n / 1000000);
+        words += (millions === 1 ? 'UN MILLÓN' : numberToWords(millions) + ' MILLONES') + ' ';
+        n %= 1000000;
+    }
+
+    if (n >= 1000) {
+        let thousands = Math.floor(n / 1000);
+        words += (thousands === 1 ? 'MIL' : numberToWords(thousands) + ' MIL') + ' ';
+        n %= 1000;
+    }
+    
+    if (n >= 100) {
+        let hundreds = Math.floor(n / 100);
+        if (hundreds === 1 && n % 100 === 0) words += 'CIEN ';
+        else if (hundreds === 1) words += 'CIENTO ';
+        else if (hundreds === 5) words += 'QUINIENTOS ';
+        else if (hundreds === 7) words += 'SETECIENTOS ';
+        else if (hundreds === 9) words += 'NOVECIENTOS ';
+        else words += ones[hundreds] + 'CIENTOS ';
+        n %= 100;
+    }
+    
+    if (n >= 20) {
+        words += tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' Y ' + ones[n % 10] : '') + ' ';
+    } else if (n >= 10) {
+        words += teens[n - 10] + ' ';
+    } else if (n > 0) {
+        words += ones[n] + ' ';
+    }
+    
+    return words.trim();
+}
+
 window.generateContract = function(id) {
     const loan = loans.find(l => l.id === id);
     if (!loan) return;
-    
+
     const printArea = document.getElementById('print-area');
     const amountStr = loan.amount.toLocaleString('es-PE', { minimumFractionDigits: 2 });
+    const interestStr = loan.interest.toLocaleString('es-PE', { minimumFractionDigits: 2 });
+    const totalStr = loan.total.toLocaleString('es-PE', { minimumFractionDigits: 2 });
     
-    const now = new Date();
-    const dayNow = now.getDate();
-    const monthNow = now.toLocaleString('es-ES', { month: 'long' });
-    const yearNow = now.getFullYear();
-
-    // Calcular meses de diferencia aproximados
-    const d1 = new Date(loan.date);
-    const d2 = new Date(loan.dueDate);
-    let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
-    if (months <= 0) months = 1;
-
-    // Calcular tasa mensual porcentual
-    const ratePercent = (loan.interestMode === 'fixed') 
-        ? ((loan.interestVal / loan.amount) * 100).toFixed(1)
-        : (loan.interestVal || 10).toFixed(1);
+    const amountWords = numberToWords(Math.floor(loan.amount));
+    
+    const loanDate = new Date(loan.date + 'T12:00:00');
+    const dueDate = new Date(loan.dueDate + 'T12:00:00');
+    
+    const monthsNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+    
+    const lDay = loanDate.getDate();
+    const lMonth = monthsNames[loanDate.getMonth()];
+    const lYear = loanDate.getFullYear();
+    
+    const dDay = dueDate.getDate();
+    const dMonth = monthsNames[dueDate.getMonth()];
+    const dYear = dueDate.getFullYear();
 
     printArea.innerHTML = `
-        <div class="contract-container simple-style">
-            <h1 style="text-decoration: underline; text-align: center; margin-bottom: 30px;">CONTRATO DE PRÉSTAMO DE DINERO</h1>
+        <div class="contract-paper">
+            <div class="contract-header">
+                <center><h2 style="text-decoration: underline; margin-bottom: 30px;">CONTRATO DE MUTUO (PRÉSTAMO DE DINERO)</h2></center>
+            </div>
             
-            <div style="text-align: right; margin-bottom: 40px; font-weight: bold;">
-                Cusco, día ${dayNow} mes ${monthNow} año ${yearNow}
-            </div>
+            <div class="contract-content">
+                <p>Conste por el presente documento privado de Contrato de Mutuo, que se celebra de una parte como <strong>EL PRESTAMISTA</strong>, el <strong>Sr. Juan David Puclla Quispe</strong>, identificado con <strong>DNI N° 60257586</strong>, con domicilio en la ciudad de Cusco; y de la otra parte como <strong>EL PRESTATARIO</strong>, el/la Sr.(a) <strong>${loan.name}</strong>, identificado(a) con <strong>DNI N° ${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '...................................................'}</strong>, bajo los términos y condiciones siguientes:</p>
 
-            <div class="contract-body">
-                <p>De una parte <strong>YO, JUAN DAVID PUCLLA QUISPE</strong>, identificado con <strong>DNI N° 60257586</strong>, domiciliado en <strong>Cusco</strong>, unidad de trabajo <strong>..............</strong>.</p>
+                <h3 style="margin-top: 20px;">CLÁUSULAS:</h3>
                 
-                <p>Y de la otra parte <strong>Sr.(a). ${loan.name}</strong>, identificado con <strong>DNI N° ${loan.dni || '..........'}</strong> y <strong>CIP N° ${loan.cip || '..........'}</strong>, domiciliado en <strong>${loan.address || '....................'}</strong>, unidad de trabajo <strong>${loan.work || '....................'}</strong>.</p>
+                <p><strong>PRIMERA: OBJETO</strong><br>
+                EL PRESTAMISTA entrega en calidad de préstamo al PRESTATARIO la suma de <strong>S/ ${amountStr} (${amountWords} y 00/100 Soles)</strong>. Dicho monto genera un interés pactado de <strong>S/ ${interestStr}</strong>, lo que hace un total a devolver de <strong>S/ ${totalStr}</strong>.</p>
 
-                <p>Ambas partes intervienen en su propio nombre y derecho.</p>
-                <p>Con la capacidad y legitimación para contratar que recíprocamente se reconocen, los comparecientes han convenido otorgar un contrato de <strong>PRÉSTAMO CON INTERESES</strong>, con arreglo a las siguientes cláusulas:</p>
+                <p><strong>SEGUNDA: MEDIO DE PAGO Y RECEPCIÓN</strong><br>
+                Las partes acuerdan que la entrega y devolución del dinero se realizará mediante efectivo o transferencias electrónicas (Yape, Plin o transferencia bancaria). EL PRESTATARIO declara bajo juramento haber recibido el capital a su entera satisfacción a la firma del presente.</p>
 
-                <h3 style="text-align: center; text-decoration: underline; margin-top: 30px; margin-bottom: 20px;">CLÁUSULAS</h3>
+                <p><strong>TERCERA: PLAZO DE DEVOLUCIÓN</strong><br>
+                EL PRESTATARIO se obliga a devolver la suma total (capital e intereses) en una sola armada, teniendo como fecha máxima de pago el día <strong>${dDay} de ${dMonth} del ${dYear}</strong>.</p>
 
-                <p><strong>Primera. ----- YO, JUAN DAVID PUCLLA QUISPE</strong>, he entregado con anterioridad a este acto en concepto de préstamo a <strong>${loan.name}</strong>, que reconoce haberlo recibido, un capital de <strong>S/. ${amountStr}</strong>.</p>
+                <p><strong>CUARTA: MORA Y PENALIDADES</strong><br>
+                En caso de incumplimiento en la fecha pactada, se aplicará una penalidad por mora de <strong>S/ ${PENALTY_PER_DAY.toFixed(2)}</strong> por cada día de retraso, sin perjuicio de las acciones legales que EL PRESTAMISTA decida emprender para recuperar el total del adeudo.</p>
 
-                <p><strong>Segunda. -----</strong> Durante el plazo del préstamo el capital prestado devengará un interés del <strong>(${ratePercent}%) mensual</strong> durante un periodo de <strong>${months} mes(es)</strong>, el cual será pagado junto con el capital en la fecha de vencimiento pactada. El interés total pactado es de <strong>S/ ${loan.interest.toFixed(2)}</strong>.</p>
+                <p><strong>QUINTA: ALLANAMIENTO ANTICIPADO Y JURISDICCIÓN</strong><br>
+                EL PRESTATARIO se somete expresamente a la cláusula de allanamiento anticipado conforme a la Ley N° 30201. Asimismo, en caso de litigio, ambas partes renuncian al fuero de sus domicilios y se someten a la competencia de los jueces y tribunales de la ciudad de Cusco.</p>
 
-                <p><strong>Tercero. -----</strong> El capital prestado ha de devolverse en un plazo máximo de <strong>${formatObjDate(loan.dueDate)}</strong>.</p>
-
-                <p><strong>Cuarto. -----</strong> Y en prueba de conformidad los otorgantes firman por duplicado el presente contrato en el lugar y fecha indicados en el encabezamiento.</p>
+                <p><strong>SEXTA: CONFORMIDAD</strong><br>
+                Ambas partes declaran que en este acto no existe error, dolo ni mala fe, firmando y poniendo su huella digital en señal de total conformidad en la localidad de <strong>Cusco</strong>, el día <strong>${lDay} de ${lMonth} del ${lYear}</strong>.</p>
             </div>
 
-            <div class="signatures-wrap" style="margin-top: 80px;">
-                <div class="sig-section" style="border-top: none;">
-                    ..................................................<br>
-                    <strong>FIRMA</strong><br><br>
-                    <strong>SR.</strong> JUAN DAVID PUCLLA QUISPE<br>
-                    <strong>DNI.</strong> 60257586<br>
-                    <strong>PRESTAMISTA</strong>
+            <div class="sig-container" style="margin-top: 100px; display: flex; justify-content: space-between;">
+                <div class="sig-box" style="text-align: center; width: 45%;">
+                    <br>..................................................<br>
+                    <strong>EL PRESTAMISTA</strong><br>
+                    <strong>DNI: 60257586</strong><br>
+                    <strong>Huella:</strong>
                 </div>
-                <div class="sig-section" style="border-top: none;">
-                    ..................................................<br>
-                    <strong>FIRMA</strong><br><br>
-                    <strong>SR(a).</strong> ${loan.name}<br>
-                    <strong>DNI.</strong> ${loan.dni || '..........'}<br>
-                    <strong>PRESTATARIO</strong>
+                <div class="sig-box" style="text-align: center; width: 45%;">
+                    <br>..................................................<br>
+                    <strong>EL PRESTATARIO</strong><br>
+                    <strong>DNI: ${loan.dni || '..........'}</strong><br>
+                    <strong>Huella:</strong>
                 </div>
             </div>
         </div>
