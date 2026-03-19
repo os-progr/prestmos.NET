@@ -19,8 +19,6 @@ const interestLabel = document.getElementById('interest-label');
 const interestIcon = document.getElementById('interest-icon');
 const loanDateInput = document.getElementById('loanDate');
 const dueDateInput = document.getElementById('dueDate');
-const loanQuotasInput = document.getElementById('loanQuotas');
-const notesInput = document.getElementById('notes');
 
 const previewTotal = document.getElementById('preview-total');
 const previewQuotaRow = document.getElementById('preview-quota-row');
@@ -30,17 +28,9 @@ const searchInput = document.getElementById('searchInput');
 const submitBtn = document.getElementById('submit-btn');
 const cancelEditBtn = document.getElementById('cancel-edit-btn');
 const formTitle = document.getElementById('form-title');
-const fileSection = document.getElementById('file-section');
 const exportBtn = document.getElementById('export-btn');
 const backupBtn = document.getElementById('backup-btn');
 const importJson = document.getElementById('import-json');
-
-// File Inputs
-const fileInputs = {
-    dni: document.getElementById('dniFile'),
-    payment: document.getElementById('paymentFile'),
-    light: document.getElementById('lightFile')
-};
 
 // Table and Metrics
 const loansTbody = document.getElementById('loans-tbody');
@@ -107,7 +97,6 @@ function init() {
     nextMonth.setDate(nextMonth.getDate() + 30);
     dueDateInput.valueAsDate = nextMonth;
     
-    setupFileInputListeners();
     initDB().then(() => {
         loadDataFromDB();
     }).catch(err => {
@@ -306,7 +295,6 @@ function loadDataFromDB() {
         
         loans.forEach(l => {
             if (!l.abonos) l.abonos = [];
-            if (!l.notes) l.notes = "";
             if (!l.dueDate) l.dueDate = l.date;
             if (!l.quotas) l.quotas = 1;
         });
@@ -337,42 +325,6 @@ function deleteLoanFromDB(id) {
 }
 
 /* =========================================
-   FILE UPLOADS
-========================================= */
-function setupFileInputListeners() {
-    for (const [key, inputEl] of Object.entries(fileInputs)) {
-        inputEl.addEventListener('change', (e) => {
-            const label = e.target.closest('.file-upload-label');
-            const span = label.querySelector('span');
-            if (e.target.files.length > 0) {
-                label.classList.add('has-file');
-                span.textContent = "Foto Lista";
-            } else {
-                label.classList.remove('has-file');
-                span.textContent = key === 'dni' ? 'Foto de DNI' : key==='payment'?'Voucher Entrega':'Recibo Luz';
-            }
-        });
-    }
-}
-
-function readFileAsBase64(file) {
-    return new Promise((resolve) => {
-        if (!file) return resolve(null);
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = () => resolve(null);
-        reader.readAsDataURL(file);
-    });
-}
-
-function resetFileInputsUI() {
-    document.querySelectorAll('.file-upload-label').forEach(l => l.classList.remove('has-file'));
-    const spans = document.querySelectorAll('.file-upload-label span');
-    if(spans.length >= 3){
-        spans[0].textContent = 'Foto de DNI';
-        spans[1].textContent = 'Voucher Entrega';
-        spans[2].textContent = 'Recibo Luz';
-    }
 }
 
 /* =========================================
@@ -422,18 +374,10 @@ function getLoanSummary(loan) {
 function updatePreview() {
     const amount = parseFloat(loanAmountInput.value) || 0;
     const rate = parseFloat(interestRateInput.value) || 0;
-    const quotas = parseInt(loanQuotasInput.value) || 1;
     
     const mode = interestModeSelect.value;
     const total = calcTotalPay(amount, rate, mode);
     previewTotal.textContent = `S/ ${total.toFixed(2)}`;
-    
-    if (quotas > 1) {
-        previewQuotaRow.style.display = 'flex';
-        previewQuotaAmt.textContent = `S/ ${(total / quotas).toFixed(2)}`;
-    } else {
-        previewQuotaRow.style.display = 'none';
-    }
 }
 
 async function handleAddOrEditLoan(e) {
@@ -449,10 +393,8 @@ async function handleAddOrEditLoan(e) {
     const amount = parseFloat(loanAmountInput.value);
     const rate = parseFloat(interestRateInput.value) || 0;
     const mode = interestModeSelect.value;
-    const quotas = parseInt(loanQuotasInput.value) || 1;
     const dateStr = loanDateInput.value;
     const dueDateStr = dueDateInput.value;
-    const notes = notesInput.value.trim();
 
     if (!name || isNaN(amount) || amount <= 0 || !dateStr || !dueDateStr) return;
     
@@ -477,8 +419,6 @@ async function handleAddOrEditLoan(e) {
             loans[existingId].total = totalToPay;
             loans[existingId].date = dateStr;
             loans[existingId].dueDate = dueDateStr;
-            loans[existingId].notes = notes;
-            loans[existingId].quotas = quotas;
             await putLoanToDB(loans[existingId]);
         }
         window.cancelEdit();
@@ -502,17 +442,13 @@ async function handleAddOrEditLoan(e) {
             total: totalToPay,
             date: dateStr,
             dueDate: dueDateStr,
-            notes: notes,
-            quotas: quotas,
             abonos: [], 
-            createdAt: new Date().toISOString(),
-            images: { dni: dniB64, payment: payB64, light: lightB64 }
+            createdAt: new Date().toISOString()
         };
         
         await putLoanToDB(newLoan);
         loans.unshift(newLoan);
         form.reset();
-        resetFileInputsUI();
         
         loanDateInput.valueAsDate = new Date();
         const nextM = new Date(); nextM.setDate(nextM.getDate() + 30);
@@ -570,8 +506,6 @@ window.startEditMode = function(id) {
     
     loanDateInput.value = loan.date;
     dueDateInput.value = loan.dueDate;
-    notesInput.value = loan.notes || "";
-    loanQuotasInput.value = loan.quotas || 1;
     
     updatePreview();
 
@@ -915,7 +849,7 @@ window.generateContract = function(id) {
 
                 <p><strong>Primera. ----- YO, JUAN DAVID PUCLLA QUISPE</strong>, he entregado con anterioridad a este acto en concepto de préstamo a <strong>${loan.name}</strong>, que reconoce haberlo recibido, un capital de <strong>S/. ${amountStr}</strong>.</p>
 
-                <p><strong>Segunda. -----</strong> Durante el plazo del préstamo el capital prestado devengará un interés del <strong>(${ratePercent}%) mensual</strong> durante un periodo de <strong>${months} mes(es)</strong>, debiendo ser pagado estos a fin de cada mes de iniciado el préstamo. El interés total pactado es de <strong>S/ ${loan.interest.toFixed(2)}</strong>.</p>
+                <p><strong>Segunda. -----</strong> Durante el plazo del préstamo el capital prestado devengará un interés del <strong>(${ratePercent}%) mensual</strong> durante un periodo de <strong>${months} mes(es)</strong>, el cual será pagado junto con el capital en la fecha de vencimiento pactada. El interés total pactado es de <strong>S/ ${loan.interest.toFixed(2)}</strong>.</p>
 
                 <p><strong>Tercero. -----</strong> El capital prestado ha de devolverse en un plazo máximo de <strong>${formatObjDate(loan.dueDate)}</strong>.</p>
 
