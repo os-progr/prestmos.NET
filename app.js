@@ -21,8 +21,6 @@ const loanDateInput = document.getElementById('loanDate');
 const dueDateInput = document.getElementById('dueDate');
 
 const previewTotal = document.getElementById('preview-total');
-const previewQuotaRow = document.getElementById('preview-quota-row');
-const previewQuotaAmt = document.getElementById('preview-quota-amt');
 
 const searchInput = document.getElementById('searchInput');
 const submitBtn = document.getElementById('submit-btn');
@@ -46,10 +44,7 @@ const archiveContent = document.getElementById('archive-content');
 const toggleArchiveBtn = document.getElementById('toggle-archive-btn');
 const archiveEmptyState = document.getElementById('archive-empty-state');
 
-// Modals
-const modalGallery = document.getElementById('modal-gallery');
-const modalEmpty = document.getElementById('modal-empty');
-const modalTitle = document.getElementById('modal-title');
+// Payments, etc.
 
 // Payment Modal
 const payLoanId = document.getElementById('pay-loan-id');
@@ -58,8 +53,6 @@ const payDateInput = document.getElementById('pay-date');
 const payClientName = document.getElementById('pay-client-name');
 const payRemaining = document.getElementById('pay-remaining');
 const payForm = document.getElementById('pay-form');
-const payHistoryList = document.getElementById('pay-history');
-const payQuotaInfo = document.getElementById('pay-quota-info');
 
 // WhatsApp Voucher
 const vDate = document.getElementById('v-date');
@@ -532,8 +525,6 @@ window.openPayModal = function(id) {
     payDateInput.valueAsDate = new Date();
     payAmountInput.value = "";
     
-    payQuotaInfo.textContent = `Pagos: ${(loan.abonos||[]).length} de ${loan.quotas||1}`;
-
     payHistoryList.innerHTML = "";
     if (loan.abonos && loan.abonos.length > 0) {
         loan.abonos.forEach((ab) => {
