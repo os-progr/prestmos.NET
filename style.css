@@ -445,6 +445,6 @@ body {
     .contract-content p { margin-bottom: 1rem; text-align: justify; }
     .contract-content strong { color: #000; }
 
-    .sig-container { margin-top: 50px; }
-    .sig-box div[style*="border"] { border: 1px solid #777 !important; }
+    .sig-container { margin-top: 50px; display: flex; justify-content: space-between; }
+    .sig-box { text-align: center; width: 45%; }
 }

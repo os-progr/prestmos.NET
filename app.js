@@ -831,19 +831,13 @@ window.generateContract = function(id) {
     
     const dDay = dueDate.getDate();
     const dMonth = monthsNames[dueDate.getMonth()];
-    const dYear = dueDate.getFullYear();
-
     printArea.innerHTML = `
         <div class="contract-paper formal-mode">
-            <div class="contract-meta" style="text-align: right; font-size: 10pt; color: #666; margin-bottom: 20px;">
-                Cusco, ${lDay} de ${lMonth} del ${lYear} | <strong>REGISTRO N°: ${loan.id.slice(0,8).toUpperCase()}</strong>
-            </div>
-
-            <div class="contract-header">
+            <div class="contract-header" style="margin-top: 20px;">
                 <center>
-                    <h2 style="text-decoration: underline; margin-bottom: 5px; font-size: 18pt;">CONTRATO DE MUTUO (PRÉSTAMO DE DINERO)</h2>
-                    <p style="font-size: 10pt; font-style: italic; margin-bottom: 30px;">Conste por el presente documento privado de reconocimiento de deuda y compromiso de pago;</p>
+                    <h2 style="text-decoration: underline; margin-bottom: 30px; font-size: 16pt; font-weight: bold;">CONTRATO DE MUTUO (PRÉSTAMO DE DINERO)</h2>
                 </center>
+                <p style="text-align: justify; margin-bottom: 30px;">Conste por el presente documento privado de reconocimiento de deuda y compromiso de pago;</p>
             </div>
             
             <div class="contract-content">
@@ -873,18 +867,18 @@ window.generateContract = function(id) {
                 En señal de absoluta conformidad y validez de lo aquí pactado, las partes firman y estampan su huella digital en la ciudad de <strong>Cusco</strong>, a los <strong>${lDay} días del mes de ${lMonth} del año ${lYear}</strong>.</p>
             </div>
 
-            <div class="sig-container" style="margin-top: 120px; display: flex; justify-content: space-between;">
-                <div class="sig-box" style="text-align: center; width: 42%; border-top: 1px solid #000; padding-top: 10px;">
+            <div class="sig-container" style="margin-top: 150px; display: flex; justify-content: space-between;">
+                <div class="sig-box" style="text-align: center; width: 42%;">
+                    <br>..................................................<br>
                     <strong>EL PRESTAMISTA</strong><br>
-                    Juan David Puclla Quispe<br>
-                    DNI: 60257586<br><br>
-                    <div style="border: 1px solid #ccc; width: 60px; height: 80px; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #999;">Huella</div>
+                    DNI: 60257586<br>
+                    Huella: __________
                 </div>
-                <div class="sig-box" style="text-align: center; width: 42%; border-top: 1px solid #000; padding-top: 10px;">
+                <div class="sig-box" style="text-align: center; width: 42%;">
+                    <br>..................................................<br>
                     <strong>EL PRESTATARIO</strong><br>
-                    ${loan.name}<br>
-                    DNI: ${loan.dni || '..........'}<br><br>
-                    <div style="border: 1px solid #ccc; width: 60px; height: 80px; margin: 10px auto; display: flex; align-items: center; justify-content: center; font-size: 8pt; color: #999;">Huella</div>
+                    DNI: ${loan.dni || '..........'}<br>
+                    Huella: __________
                 </div>
             </div>
         </div>
