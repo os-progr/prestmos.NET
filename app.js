@@ -10,6 +10,8 @@ const clientNameInput = document.getElementById('clientName');
 const clientDniInput = document.getElementById('clientDni');
 const clientPhoneInput = document.getElementById('clientPhone');
 const clientAddressInput = document.getElementById('clientAddress');
+const clientCipInput = document.getElementById('clientCip');
+const clientWorkInput = document.getElementById('clientWork');
 const loanAmountInput = document.getElementById('loanAmount');
 const interestRateInput = document.getElementById('interestRate');
 const interestModeSelect = document.getElementById('interestMode');
@@ -442,6 +444,8 @@ async function handleAddOrEditLoan(e) {
     const dni = clientDniInput.value.trim();
     const phone = clientPhoneInput.value.trim();
     const address = clientAddressInput.value.trim();
+    const cip = clientCipInput.value.trim();
+    const work = clientWorkInput.value.trim();
     const amount = parseFloat(loanAmountInput.value);
     const rate = parseFloat(interestRateInput.value) || 0;
     const mode = interestModeSelect.value;
@@ -464,6 +468,8 @@ async function handleAddOrEditLoan(e) {
             loans[existingId].dni = dni;
             loans[existingId].phone = phone;
             loans[existingId].address = address;
+            loans[existingId].cip = cip;
+            loans[existingId].work = work;
             loans[existingId].amount = amount;
             loans[existingId].interest = (mode === 'fixed') ? rate : (amount * (rate/100));
             loans[existingId].interestMode = mode;
@@ -487,6 +493,8 @@ async function handleAddOrEditLoan(e) {
             dni: dni,
             phone: phone,
             address: address,
+            cip: cip,
+            work: work,
             amount: amount,
             interest: (mode === 'fixed') ? rate : (amount * (rate/100)),
             interestMode: mode,
@@ -545,6 +553,8 @@ window.startEditMode = function(id) {
     clientDniInput.value = loan.dni || "";
     clientPhoneInput.value = loan.phone || "";
     clientAddressInput.value = loan.address || "";
+    clientCipInput.value = loan.cip || "";
+    clientWorkInput.value = loan.work || "";
     loanAmountInput.value = loan.amount;
     
     if (loan.interestMode === 'fixed') {
@@ -867,74 +877,65 @@ window.generateContract = function(id) {
     if (!loan) return;
     
     const printArea = document.getElementById('print-area');
-    const { mora } = getLoanSummary(loan);
-    const totalToPay = (loan.total + mora).toFixed(2);
-    const interestStr = loan.interest.toFixed(2);
-    const amountStr = loan.amount.toFixed(2);
+    const amountStr = loan.amount.toLocaleString('es-PE', { minimumFractionDigits: 2 });
     
-    const shortId = loan.id.split('-')[0].toUpperCase();
     const now = new Date();
     const dayNow = now.getDate();
     const monthNow = now.toLocaleString('es-ES', { month: 'long' });
     const yearNow = now.getFullYear();
 
+    // Calcular meses de diferencia aproximados
+    const d1 = new Date(loan.date);
+    const d2 = new Date(loan.dueDate);
+    let months = (d2.getFullYear() - d1.getFullYear()) * 12 + (d2.getMonth() - d1.getMonth());
+    if (months <= 0) months = 1;
+
+    // Calcular tasa mensual porcentual
+    const ratePercent = (loan.interestMode === 'fixed') 
+        ? ((loan.interestVal / loan.amount) * 100).toFixed(1)
+        : (loan.interestVal || 10).toFixed(1);
+
     printArea.innerHTML = `
-        <div class="contract-container">
-            <header class="contract-header">
-                <div class="header-brand">
-                    <h1>PRESTACUSCO</h1>
-                    <p>Servicios Financieros Cusco</p>
-                </div>
-                <div class="header-meta">
-                    <div class="doc-id">CONTRATO N° ${shortId}</div>
-                    <div class="doc-date">Cusco, ${dayNow} de ${monthNow} de ${yearNow}</div>
-                </div>
-            </header>
-
-            <h2>CONTRATO PRIVADO DE PRÉSTAMO DE DINERO</h2>
-
-            <div class="contract-section">
-                <span class="section-title">I. IDENTIFICACIÓN DE LAS PARTES</span>
-                <table class="data-table">
-                    <tr><th>PRESTAMISTA</th><td>JUAN DAVID PUCLLA QUISPE (DNI: 60257586)</td></tr>
-                    <tr><th>DOMICILIO</th><td>Cusco, Perú</td></tr>
-                    <tr><th>PRESTATARIO</th><td>${loan.name} (DNI: ${loan.dni || '..........'})</td></tr>
-                    <tr><th>DOMICILIO CLIENTE</th><td>${loan.address || '..................................................'}</td></tr>
-                </table>
+        <div class="contract-container simple-style">
+            <h1 style="text-decoration: underline; text-align: center; margin-bottom: 30px;">CONTRATO DE PRÉSTAMO DE DINERO</h1>
+            
+            <div style="text-align: right; margin-bottom: 40px; font-weight: bold;">
+                Cusco, día ${dayNow} mes ${monthNow} año ${yearNow}
             </div>
 
-            <div class="contract-section">
-                <span class="section-title">II. CONDICIONES DEL PRÉSTAMO</span>
-                <table class="data-table">
-                    <tr><th>CAPITAL PRESTADO</th><td><strong>S/ ${amountStr}</strong></td></tr>
-                    <tr><th>INTERÉS PACTADO</th><td>S/ ${interestStr}</td></tr>
-                    <tr><th>TOTAL A DEVOLVER</th><td><strong>S/ ${totalToPay}</strong></td></tr>
-                    <tr><th>FECHA VENCIMIENTO</th><td>${formatObjDate(loan.dueDate)}</td></tr>
-                    <tr><th>MORA DIARIA</th><td>S/ ${PENALTY_PER_DAY.toFixed(2)}</td></tr>
-                </table>
+            <div class="contract-body">
+                <p>De una parte <strong>YO, JUAN DAVID PUCLLA QUISPE</strong>, identificado con <strong>DNI N° 60257586</strong>, domiciliado en <strong>Cusco</strong>, unidad de trabajo <strong>..............</strong>.</p>
+                
+                <p>Y de la otra parte <strong>Sr.(a). ${loan.name}</strong>, identificado con <strong>DNI N° ${loan.dni || '..........'}</strong> y <strong>CIP N° ${loan.cip || '..........'}</strong>, domiciliado en <strong>${loan.address || '....................'}</strong>, unidad de trabajo <strong>${loan.work || '....................'}</strong>.</p>
+
+                <p>Ambas partes intervienen en su propio nombre y derecho.</p>
+                <p>Con la capacidad y legitimación para contratar que recíprocamente se reconocen, los comparecientes han convenido otorgar un contrato de <strong>PRÉSTAMO CON INTERESES</strong>, con arreglo a las siguientes cláusulas:</p>
+
+                <h3 style="text-align: center; text-decoration: underline; margin-top: 30px; margin-bottom: 20px;">CLÁUSULAS</h3>
+
+                <p><strong>Primera. ----- YO, JUAN DAVID PUCLLA QUISPE</strong>, he entregado con anterioridad a este acto en concepto de préstamo a <strong>${loan.name}</strong>, que reconoce haberlo recibido, un capital de <strong>S/. ${amountStr}</strong>.</p>
+
+                <p><strong>Segunda. -----</strong> Durante el plazo del préstamo el capital prestado devengará un interés del <strong>(${ratePercent}%) mensual</strong> durante un periodo de <strong>${months} mes(es)</strong>, debiendo ser pagado estos a fin de cada mes de iniciado el préstamo. El interés total pactado es de <strong>S/ ${loan.interest.toFixed(2)}</strong>.</p>
+
+                <p><strong>Tercero. -----</strong> El capital prestado ha de devolverse en un plazo máximo de <strong>${formatObjDate(loan.dueDate)}</strong>.</p>
+
+                <p><strong>Cuarto. -----</strong> Y en prueba de conformidad los otorgantes firman por duplicado el presente contrato en el lugar y fecha indicados en el encabezamiento.</p>
             </div>
 
-            <div class="contract-section">
-                <span class="section-title">III. CLÁUSULAS DEL CONTRATO</span>
-                <p><strong>1. OBJETO:</strong> EL PRESTAMISTA entrega en este acto la suma de capital indicada, libre de toda carga y de procedencia lícita, recibiendo EL PRESTATARIO dicha suma a su entera satisfacción.</p>
-                <p><strong>2. INTERESES:</strong> Las partes acuerdan libremente que el capital generará el interés detallado en las condiciones generales, el cual será cancelado junto al capital en la fecha estipulada.</p>
-                <p><strong>3. DEVOLUCIÓN:</strong> EL PRESTATARIO se obliga a la devolución total del monto adeudado en la fecha de vencimiento pactada, sin necesidad de requerimiento previo.</p>
-                <p><strong>4. INCUMPLIMIENTO:</strong> En caso de mora, se aplicará la penalidad diaria establecida de forma automática sobre el saldo pendiente, la cual se capitalizará diariamente hasta la cancelación total.</p>
-                <p><strong>5. CONFORMIDAD:</strong> Ambas partes declaran que en la celebración de este contrato no existe vicio alguno del consentimiento, firmando y poniendo su huella dactilar como muestra de ratificación.</p>
-            </div>
-
-            <div class="signatures-wrap">
-                <div class="sig-section">
-                    <div class="fingerprint-box">HUELLA</div>
-                    <br><br>_________________________<br>
-                    <strong>Firma del Prestamista</strong><br>
-                    Juan David Puclla Quispe
+            <div class="signatures-wrap" style="margin-top: 80px;">
+                <div class="sig-section" style="border-top: none;">
+                    ..................................................<br>
+                    <strong>FIRMA</strong><br><br>
+                    <strong>SR.</strong> JUAN DAVID PUCLLA QUISPE<br>
+                    <strong>DNI.</strong> 60257586<br>
+                    <strong>PRESTAMISTA</strong>
                 </div>
-                <div class="sig-section">
-                    <div class="fingerprint-box">HUELLA</div>
-                    <br><br>_________________________<br>
-                    <strong>Firma del Prestatario</strong><br>
-                    Nombre: ${loan.name}
+                <div class="sig-section" style="border-top: none;">
+                    ..................................................<br>
+                    <strong>FIRMA</strong><br><br>
+                    <strong>SR(a).</strong> ${loan.name}<br>
+                    <strong>DNI.</strong> ${loan.dni || '..........'}<br>
+                    <strong>PRESTATARIO</strong>
                 </div>
             </div>
         </div>
