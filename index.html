@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PRESTACUSCO | Panel Premium</title>
+    <!-- Google Fonts: Outfit -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+    <link rel="manifest" href="manifest.json">
+</head>
+<body>
+    <div class="app-background"></div>
+    <div class="glow-bg"></div>
+
+    <!-- PANTALLA DE LOGIN / SEGURIDAD -->
+    <div id="login-overlay" class="login-overlay">
+        <div class="login-card animate-fade-up">
+            <div class="login-icon-wrapper">
+                <i data-lucide="shield-check" class="login-icon"></i>
+            </div>
+            <h2>Acceso Restringido</h2>
+            <p class="text-muted text-sm mt-1">Ingresa tu PIN de seguridad para continuar</p>
+            
+            <form id="login-form">
+                <div class="input-wrapper mt-4">
+                    <i data-lucide="key"></i>
+                    <input type="password" id="pin-input" placeholder="Ingresa tu PIN (092022edith)" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="btn btn-primary w-full mt-4">
+                    <i data-lucide="unlock"></i> Desbloquear Panel
+                </button>
+            </form>
+            <p id="login-error" class="text-danger mt-2 hidden text-sm text-center">PIN Incorrecto. Intenta nuevamente.</p>
+        </div>
+    </div>
+
+    <div class="dashboard-layout fade-in" id="dashboard-main" style="display: none;">
+        <!-- HEADER / NAV -->
+        <header class="top-nav">
+            <div class="nav-brand">
+                <div class="brand-icon pulse">
+                    <i data-lucide="wallet"></i>
+                </div>
+                <h2>PRESTA<span class="text-accent">CUSCO</span></h2>
+            </div>
+            <div class="nav-right">
+                <div class="active-clients-badge hidden-mobile">
+                    <i data-lucide="users"></i> <span id="clients-count">0</span> Activos
+                </div>
+                <button class="btn btn-icon" id="theme-toggle" title="Cambiar Tema (Modo Claro/Oscuro)" style="margin-left: 0.5rem; width: 32px; height: 32px;">
+                    <i data-lucide="sun" style="width: 16px; height: 16px;"></i>
+                </button>
+                <button class="btn btn-primary btn-sm ml-2" id="export-btn" title="Exportar CSV">
+                    <i data-lucide="file-spreadsheet"></i> <span class="hidden-mobile">Excel</span>
+                </button>
+                <button class="btn btn-primary btn-sm ml-2" id="backup-btn" style="background: linear-gradient(135deg, #1E90FF 0%, #005cbf 100%);" title="Backup Total (JSON)">
+                    <i data-lucide="download-cloud"></i> <span class="hidden-mobile">Respaldo</span>
+                </button>
+                <label class="btn btn-secondary btn-sm ml-2" title="Restaurar DB" for="import-json" style="cursor: pointer;">
+                    <i data-lucide="upload-cloud"></i> <span class="hidden-mobile">Restaurar</span>
+                </label>
+                <input type="file" id="import-json" accept=".json" class="hidden-file-input">
+                <button class="btn btn-secondary btn-sm ml-2 text-danger" id="logout-btn" title="Bloquear Sistema">
+                    <i data-lucide="lock"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- MAIN DASHBOARD CONTENT -->
+        <main class="dashboard-container">
+            
+            <!-- TOP SECTION: Metrics & Chart -->
+            <div class="top-section animate-fade-up" style="animation-delay: 0.1s;">
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="metric-icon"><i data-lucide="trending-up"></i></div>
+                        <div class="metric-info">
+                            <p class="metric-label">Capital Prestado Base</p>
+                            <h3 class="metric-value" id="total-lent">S/ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon"><i data-lucide="piggy-bank"></i></div>
+                        <div class="metric-info">
+                            <p class="metric-label">Ganancia Esperada (Interés)</p>
+                            <h3 class="metric-value text-accent" id="total-interest">S/ 0.00</h3>
+                        </div>
+                    </div>
+                    <div class="metric-card danger-card">
+                        <div class="metric-icon text-danger" style="background: rgba(255, 71, 87, 0.1);"><i data-lucide="alert-octagon"></i></div>
+                        <div class="metric-info">
+                            <p class="metric-label">Mora Acumulada</p>
+                            <h3 class="metric-value text-danger" id="total-penalties">S/ 0.00</h3>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="chart-panel">
+                    <h3 class="panel-subtitle">Distribución del Portafolio</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="portfolioChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM SECTION: Form & Table -->
+            <div class="dashboard-split animate-fade-up" style="animation-delay: 0.2s;">
+                <!-- FORM COLUMN -->
+                <div class="panel form-panel">
+                    <div class="panel-header">
+                        <h3 id="form-title"><i data-lucide="plus-circle"></i> Registro de Operación</h3>
+                        <p class="text-muted text-sm">Apertura o actualización de perfil crediticio</p>
+                    </div>
+                    
+                    <form id="loan-form" class="loan-form">
+                        <input type="hidden" id="edit-id">
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="clientName">Nombre Completo del Cliente</label>
+                                <div class="input-wrapper">
+                                    <i data-lucide="user"></i>
+                                    <input type="text" id="clientName" placeholder="Nombres y Apellidos" required autocomplete="off">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="clientPhone">Celular / WhatsApp (Opcional)</label>
+                                <div class="input-wrapper">
+                                    <i data-lucide="smartphone"></i>
+                                    <input type="tel" id="clientPhone" placeholder="Ej. 987654321" autocomplete="off">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="loanAmount">Monto (S/)</label>
+                                <div class="input-wrapper">
+                                    <i data-lucide="dollar-sign"></i>
+                                    <input type="number" id="loanAmount" min="10" step="1" placeholder="100" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="interestRate">Interés (%)</label>
+                                <div class="input-wrapper">
+                                    <i data-lucide="percent"></i>
+                                    <input type="number" id="interestRate" min="0" step="1" placeholder="Ej. 5" value="5">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-grid-2">
+                            <div class="form-group">
+                                <label for="loanDate">Préstamo</label>
+                                <div class="input-wrapper">
+                                    <i data-lucide="calendar"></i>
+                                    <input type="date" id="loanDate" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="dueDate">Vencimiento</label>
+                                <div class="input-wrapper text-alert">
+                                    <i data-lucide="clock"></i>
+                                    <input type="date" id="dueDate" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- CUOTAS -->
+                        <div class="form-group mt-2">
+                            <label for="loanQuotas">Fraccionar Pago (N° de Cuotas)</label>
+                            <div class="input-wrapper">
+                                <i data-lucide="layers"></i>
+                                <input type="number" id="loanQuotas" min="1" step="1" value="1" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group mt-2">
+                            <label for="notes">Notas / Acuerdos</label>
+                            <div class="input-wrapper">
+                                <i data-lucide="align-left"></i>
+                                <input type="text" id="notes" placeholder="Ej. Pago los fines de semana">
+                            </div>
+                        </div>
+
+                        <!-- ARCHIVOS / IMÁGENES -->
+                        <div class="form-group file-group mt-2" id="file-section">
+                            <label>Documentos Adjuntos (Opcional)</label>
+                            
+                            <label class="file-upload-label" for="dniFile">
+                                <i data-lucide="id-card"></i>
+                                <span>Foto de DNI</span>
+                                <input type="file" id="dniFile" accept="image/*" class="hidden-file-input">
+                            </label>
+
+                            <label class="file-upload-label" for="paymentFile">
+                                <i data-lucide="receipt"></i>
+                                <span>Voucher Entrega</span>
+                                <input type="file" id="paymentFile" accept="image/*" class="hidden-file-input">
+                            </label>
+
+                            <label class="file-upload-label" for="lightFile">
+                                <i data-lucide="zap"></i>
+                                <span>Recibo Luz</span>
+                                <input type="file" id="lightFile" accept="image/*" class="hidden-file-input">
+                            </label>
+                        </div>
+
+                        <!-- PREVIEW CALCULATED -->
+                        <div class="preview-box">
+                            <div class="preview-row">
+                                <span>Retorno Total Esperado:</span>
+                                <strong id="preview-total" class="text-accent">S/ 0.00</strong>
+                            </div>
+                            <div class="preview-row" id="preview-quota-row" style="display:none;">
+                                <span>Monto aprox. por Cuota:</span>
+                                <strong id="preview-quota-amt">S/ 0.00</strong>
+                            </div>
+                        </div>
+
+                        <div class="form-actions mt-4">
+                            <button type="button" id="cancel-edit-btn" class="btn btn-secondary w-full hidden mb-2" onclick="cancelEdit()">
+                                Cancelar Edición
+                            </button>
+                            <button type="submit" class="btn btn-primary w-full" id="submit-btn">
+                                <i data-lucide="save"></i> Procesar Operación
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- TABLE COLUMN -->
+                <div class="panel list-panel">
+                    <div class="panel-header flex-between">
+                        <h3><i data-lucide="list"></i> Portafolio de Créditos Activos</h3>
+                        <div class="search-box">
+                            <i data-lucide="search"></i>
+                            <input type="text" id="searchInput" placeholder="Buscar cliente...">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive">
+                        <table class="styled-table" id="loans-table">
+                            <thead>
+                                <tr>
+                                    <th>Cliente</th>
+                                    <th>Deuda Local</th>
+                                    <th class="text-danger">Mora</th>
+                                    <th>Abonado</th>
+                                    <th>Restante Total</th>
+                                    <th>Estado / Vence</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="loans-tbody">
+                                <!-- Filas generadas por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <div id="empty-state" class="empty-state hidden">
+                        <div class="empty-icon-box"><i data-lucide="folder-open"></i></div>
+                        <h4>Portafolio Limpio</h4>
+                        <p>No hay prestamos activos o pendientes actualmente.</p>
+                    </div>
+
+                    <div id="archive-section" class="mt-4 pt-4" style="border-top: 1px dashed rgba(255,255,255,0.1);">
+                        <div class="panel-header flex-between mb-2">
+                            <h4 style="font-size: 1.1rem; color: var(--text-secondary);"><i data-lucide="archive"></i> Historial (Cerradas/Canceladas)</h4>
+                            <button id="toggle-archive-btn" class="btn btn-sm btn-secondary">Mostrar</button>
+                        </div>
+                        <div id="archive-content" class="table-responsive hidden">
+                            <table class="styled-table" id="archive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Cliente</th>
+                                        <th>Capital Original</th>
+                                        <th>Estado Final</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="archive-tbody"></tbody>
+                            </table>
+                            <div id="archive-empty-state" class="empty-state hidden" style="padding: 2rem 0;">
+                                <p class="text-sm">No hay registros en el historial.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- MODAL PARA VER FOTOS -->
+    <div id="image-modal" class="modal hidden fade-in">
+        <div class="modal-overlay" onclick="closeModal('image-modal')"></div>
+        <div class="modal-content glass-modal">
+            <button class="modal-close" onclick="closeModal('image-modal')"><i data-lucide="x"></i></button>
+            <h3 class="modal-title" id="modal-title">Documentos</h3>
+            <div class="modal-gallery" id="modal-gallery"></div>
+            <div id="modal-empty" class="hidden text-center text-muted mt-4">
+                <i data-lucide="image-off" style="width: 48px; height: 48px; opacity: 0.5; margin-bottom: 1rem;"></i>
+                <p>No hay documentos adjuntos.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PARA AGREGAR ABONOS -->
+    <div id="pay-modal" class="modal hidden fade-in">
+        <div class="modal-overlay" onclick="closeModal('pay-modal')"></div>
+        <div class="modal-content small-modal glass-modal">
+            <button class="modal-close" onclick="closeModal('pay-modal')"><i data-lucide="x"></i></button>
+            <h3 class="modal-title">Registrar Abono</h3>
+            <p class="text-muted text-sm mb-4">Cliente: <strong id="pay-client-name" class="text-primary"></strong></p>
+            
+            <form id="pay-form">
+                <input type="hidden" id="pay-loan-id">
+                <div class="form-group">
+                    <label>Monto a Abonar (S/)</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="dollar-sign"></i>
+                        <input type="number" id="pay-amount" min="1" step="0.5" required>
+                    </div>
+                    <small class="text-muted mt-1 inline-block">Deuda total con mora: <strong id="pay-remaining" class="text-accent"></strong></small>
+                </div>
+                
+                <div class="form-group mb-4">
+                    <label>Fecha del Abono</label>
+                    <div class="input-wrapper">
+                        <i data-lucide="calendar"></i>
+                        <input type="date" id="pay-date" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary w-full"><i data-lucide="check"></i> Guardar y Ver Recibo</button>
+            </form>
+
+            <div class="mt-4 pt-4" style="border-top:1px solid rgba(255,255,255,0.1);">
+                <div class="flex-between mb-2">
+                    <h4 class="text-sm text-secondary">Historial de Pagos</h4>
+                    <span id="pay-quota-info" class="badge"></span>
+                </div>
+                <div id="pay-history" class="pay-history-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VOUCHER WHATSAPP -->
+    <div id="voucher-modal" class="modal hidden fade-in">
+        <div class="modal-overlay" onclick="closeModal('voucher-modal')"></div>
+        <div class="modal-content small-modal glass-modal" style="background: rgba(230, 230, 230, 0.95); color: #111;"> 
+            <button class="modal-close" onclick="closeModal('voucher-modal')" style="color:#000;"><i data-lucide="x"></i></button>
+            
+            <div class="voucher-card" id="voucher-card">
+                <div class="voucher-header">
+                    <div class="success-ring"><i data-lucide="check" style="color: #25D366; width: 24px; height: 24px;"></i></div>
+                    <h3 style="margin-top: 10px;">¡Abono Exitoso!</h3>
+                    <p class="text-sm" style="color: #666;" id="v-date"></p>
+                </div>
+                <div class="voucher-body">
+                    <div class="v-row"><span>Cliente:</span> <strong id="v-client"></strong></div>
+                    <div class="v-row text-lg"><span>Monto Abonado:</span> <strong id="v-amount" style="color:#25D366;"></strong></div>
+                    <div class="v-divider"></div>
+                    <div class="v-row"><span>Saldo Anterior:</span> <span id="v-prev"></span></div>
+                    <div class="v-row"><span>Deuda Restante:</span> <strong id="v-new" style="color: #ff4757;"></strong></div>
+                </div>
+                <div class="voucher-footer">
+                    Generado por CapitalFlow
+                </div>
+            </div>
+
+            <button id="share-wa-btn" class="btn btn-whatsapp w-full mt-4">
+                <i data-lucide="send"></i> Compartir por WhatsApp
+            </button>
+        </div>
+    </div>
+
+    <!-- Pagaré Print Area -->
+    <div id="print-area" class="hidden"></div>
+
+    <script src="app.js"></script>
+</body>
+</html>
