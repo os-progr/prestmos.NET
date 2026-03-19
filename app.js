@@ -839,9 +839,9 @@ window.generateContract = function(id) {
     if (!loan) return;
     
     const printArea = document.getElementById('print-area');
-    const { total, interestAmt } = getLoanSummary(loan);
-    const totalToPay = total.toFixed(2);
-    const interestStr = interestAmt.toFixed(2);
+    const { mora } = getLoanSummary(loan);
+    const totalToPay = (loan.total + mora).toFixed(2);
+    const interestStr = loan.interest.toFixed(2);
     const amountStr = loan.amount.toFixed(2);
     
     let dateStr = loan.date;
