@@ -861,7 +861,7 @@ window.generateContract = function(id) {
     printArea.innerHTML = `
         <div class="contract-container">
             <h1>CONTRATO DE PRÉSTAMO DE DINERO</h1>
-            <p>Conste por el presente contrato Privado de Préstamo de Dinero que celebramos de una parte <strong>EL PRESTAMISTA</strong>: PRESTACUSCO PREMIUM, identificado con RUC N° 20123456789, con domicilio en Calle Procuradores 123, Cusco; y de la otra parte <strong>EL PRESTATARIO</strong>: <strong>${loan.name}</strong>, identificado con DNI N° <strong>${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '..................................................'}</strong>, quienes acuerdan lo siguiente:</p>
+            <p>Conste por el presente contrato Privado de Préstamo de Dinero que celebramos de una parte <strong>EL PRESTAMISTA</strong>: PRESTACUSCO, identificado con RUC N° 20123456789, con domicilio en Calle Procuradores 123, Cusco; y de la otra parte <strong>EL PRESTATARIO</strong>: <strong>${loan.name}</strong>, identificado con DNI N° <strong>${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '..................................................'}</strong>, quienes acuerdan lo siguiente:</p>
             
             <p><strong>1. OBJETO:</strong> EL PRESTAMISTA cede en calidad de préstamo al PRESTATARIO la suma de <strong>S/ ${amountStr}</strong> soles. Dicho monto genera un interés de <strong>S/ ${interestStr}</strong> soles, sumando un total a devolver de <strong>S/ ${totalToPay}</strong> soles.</p>
             
