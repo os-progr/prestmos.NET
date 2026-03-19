@@ -422,12 +422,13 @@ body {
     .hidden-mobile { display: none !important; }
 }
 
+@page { margin: 0; }
 @media print {
-    body * { visibility: hidden; }
+    body { margin: 1.5cm; }
     #print-area, #print-area * { visibility: visible; }
     #print-area { 
         position: absolute; left: 0; top: 0; width: 100%; border: none; 
-        background: white; color: black; padding: 1.5cm; 
+        background: white; color: black; padding: 0.5cm; 
         font-family: 'Times New Roman', serif; font-size: 11pt; 
         box-shadow: none; border-radius: 0; 
     }
