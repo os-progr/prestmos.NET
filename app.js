@@ -893,8 +893,11 @@ window.generateContract = function(id) {
     `;
     
     printArea.classList.remove('hidden');
-    window.print();
-    printArea.classList.add('hidden');
+    // Pequeño retraso para asegurar que el navegador renderice el contenido antes de imprimir
+    setTimeout(() => {
+        window.print();
+        printArea.classList.add('hidden');
+    }, 100);
 }
 
 window.handleArchiveLoan = async function(id) {
