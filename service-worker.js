@@ -1,11 +1,11 @@
-const CACHE_NAME = 'capital-flow-v12';
+const CACHE_NAME = 'capital-flow-v13';
 const ASSETS = [
-    '/',
-    '/index.html',
-    '/style.css',
-    '/app.js',
-    '/manifest.json',
-    '/icon.svg',
+    './',
+    './index.html',
+    './style.css',
+    './app.js',
+    './manifest.json',
+    './icon.svg',
     'https://unpkg.com/lucide@latest',
     'https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap',
     'https://cdn.jsdelivr.net/npm/chart.js'
@@ -28,7 +28,7 @@ self.addEventListener('fetch', event => {
             }
             return fetch(event.request).then(
                 response => {
-                    if(!response || response.status !== 200 || response.type !== 'basic') {
+                    if(!response || response.status !== 200) {
                         return response;
                     }
                     const responseToCache = response.clone();
