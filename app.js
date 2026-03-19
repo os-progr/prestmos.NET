@@ -417,9 +417,7 @@ async function handleAddOrEditLoan(e) {
         }
         window.cancelEdit();
     } else {
-        const dniB64 = await readFileAsBase64(fileInputs.dni.files[0]);
-        const payB64 = await readFileAsBase64(fileInputs.payment.files[0]);
-        const lightB64 = await readFileAsBase64(fileInputs.light.files[0]);
+
 
         const newLoan = {
             id: crypto.randomUUID(),
@@ -460,7 +458,6 @@ async function handleAddOrEditLoan(e) {
 window.cancelEdit = function() {
     editIdInput.value = '';
     form.reset();
-    resetFileInputsUI();
     
     loanDateInput.valueAsDate = new Date();
     const nextM = new Date(); nextM.setDate(nextM.getDate() + 30);
@@ -468,9 +465,7 @@ window.cancelEdit = function() {
     
     updatePreview();
     formTitle.innerHTML = '<i data-lucide="plus-circle"></i> Nuevo Préstamo';
-    cancelEditBtn.classList.add('hidden');
-    fileSection.classList.remove('hidden'); 
-    submitBtn.innerHTML = '<i data-lucide="save"></i> Procesar Operación';
+    cancelEditBtn.classList.add('hidden');    submitBtn.innerHTML = '<i data-lucide="save"></i> Procesar Operación';
     lucide.createIcons();
 }
 
@@ -504,9 +499,7 @@ window.startEditMode = function(id) {
     updatePreview();
 
     formTitle.innerHTML = '<i data-lucide="edit"></i> Editando Operación';
-    cancelEditBtn.classList.remove('hidden');
-    fileSection.classList.add('hidden'); 
-    submitBtn.innerHTML = '<i data-lucide="save"></i> Actualizar Registro';
+    cancelEditBtn.classList.remove('hidden');    submitBtn.innerHTML = '<i data-lucide="save"></i> Actualizar Registro';
     
     lucide.createIcons();
     window.scrollTo({top:0, behavior: "smooth"});
