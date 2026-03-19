@@ -818,6 +818,7 @@ window.generateContract = function(id) {
     const totalStr = loan.total.toLocaleString('es-PE', { minimumFractionDigits: 2 });
     
     const amountWords = numberToWords(Math.floor(loan.amount));
+    const totalWords = numberToWords(Math.floor(loan.total));
     
     const loanDate = new Date(loan.date + 'T12:00:00');
     const dueDate = new Date(loan.dueDate + 'T12:00:00');
@@ -835,31 +836,34 @@ window.generateContract = function(id) {
     printArea.innerHTML = `
         <div class="contract-paper">
             <div class="contract-header">
-                <center><h2 style="text-decoration: underline; margin-bottom: 30px;">CONTRATO DE MUTUO (PRÉSTAMO DE DINERO)</h2></center>
+                <center><h2 style="text-decoration: underline; margin-bottom: 30px;">CONTRATO DE MUTUO CON FIRMA Y HUELLA</h2></center>
+                <p>Conste por el presente documento el Contrato de Mutuo (Préstamo de Dinero) que celebran:</p>
             </div>
             
             <div class="contract-content">
-                <p>Conste por el presente documento privado de Contrato de Mutuo, que se celebra de una parte como <strong>EL PRESTAMISTA</strong>, el <strong>Sr. Juan David Puclla Quispe</strong>, identificado con <strong>DNI N° 60257586</strong>, con domicilio en la ciudad de Cusco; y de la otra parte como <strong>EL PRESTATARIO</strong>, el/la Sr.(a) <strong>${loan.name}</strong>, identificado(a) con <strong>DNI N° ${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '...................................................'}</strong>, bajo los términos y condiciones siguientes:</p>
+                <p><strong>EL PRESTAMISTA:</strong> Juan David Puclla Quispe, identificado con <strong>DNI N° 60257586</strong>, con domicilio en la ciudad de Cusco.</p>
 
-                <h3 style="margin-top: 20px;">CLÁUSULAS:</h3>
-                
-                <p><strong>PRIMERA: OBJETO</strong><br>
-                EL PRESTAMISTA entrega en calidad de préstamo al PRESTATARIO la suma de <strong>S/ ${amountStr} (${amountWords} y 00/100 Soles)</strong>. Dicho monto genera un interés pactado de <strong>S/ ${interestStr}</strong>, lo que hace un total a devolver de <strong>S/ ${totalStr}</strong>.</p>
+                <p><strong>EL PRESTATARIO:</strong> <strong>${loan.name}</strong>, identificado con <strong>DNI N° ${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '...................................................'}</strong>, con número de contacto (WhatsApp) <strong>${loan.phone || '........................................'}</strong>.</p>
 
-                <p><strong>SEGUNDA: MEDIO DE PAGO Y RECEPCIÓN</strong><br>
-                Las partes acuerdan que la entrega y devolución del dinero se realizará mediante efectivo o transferencias electrónicas (Yape, Plin o transferencia bancaria). EL PRESTATARIO declara bajo juramento haber recibido el capital a su entera satisfacción a la firma del presente.</p>
+                <p>Ambas partes acuerdan lo siguiente:</p>
+
+                <p><strong>PRIMERA: OBJETO Y ENTREGA</strong><br>
+                EL PRESTAMISTA entrega en este acto la suma de <strong>S/ ${amountStr} (${amountWords} y 00/100 Soles)</strong>. EL PRESTATARIO declara haber recibido dicha suma a su entera satisfacción mediante [ ] Efectivo / [ ] Transferencia (Yape/Plin).</p>
+
+                <p><strong>SEGUNDA: INTERESES Y MONTO TOTAL</strong><br>
+                El préstamo genera un interés pactado de <strong>S/ ${interestStr}</strong>. Por lo tanto, la suma total que EL PRESTATARIO se obliga a devolver es de <strong>S/ ${totalStr} (${totalWords} y 00/100 Soles)</strong>.</p>
 
                 <p><strong>TERCERA: PLAZO DE DEVOLUCIÓN</strong><br>
-                EL PRESTATARIO se obliga a devolver la suma total (capital e intereses) en una sola armada, teniendo como fecha máxima de pago el día <strong>${dDay} de ${dMonth} del ${dYear}</strong>.</p>
+                EL PRESTATARIO se compromete a devolver el monto total (capital e intereses) en una sola armada, a más tardar el día: <strong>${dDay} de ${dMonth} del ${dYear}</strong>.</p>
 
-                <p><strong>CUARTA: MORA Y PENALIDADES</strong><br>
-                En caso de incumplimiento en la fecha pactada, se aplicará una penalidad por mora de <strong>S/ ${PENALTY_PER_DAY.toFixed(2)}</strong> por cada día de retraso, sin perjuicio de las acciones legales que EL PRESTAMISTA decida emprender para recuperar el total del adeudo.</p>
+                <p><strong>CUARTA: MORA AUTOMÁTICA</strong><br>
+                Por cada día de retraso en la fecha pactada, se aplicará una penalidad por mora de <strong>S/ ${PENALTY_PER_DAY.toFixed(2)} (Cero con 50/100 Soles)</strong> por día. Esta penalidad se acumulará diariamente hasta la cancelación total de la deuda.</p>
 
-                <p><strong>QUINTA: ALLANAMIENTO ANTICIPADO Y JURISDICCIÓN</strong><br>
-                EL PRESTATARIO se somete expresamente a la cláusula de allanamiento anticipado conforme a la Ley N° 30201. Asimismo, en caso de litigio, ambas partes renuncian al fuero de sus domicilios y se someten a la competencia de los jueces y tribunales de la ciudad de Cusco.</p>
+                <p><strong>QUINTA: ALLANAMIENTO Y DOMICILIO</strong><br>
+                EL PRESTATARIO se somete a la cláusula de allanamiento anticipado (Ley 30201) para agilizar cualquier proceso de cobro. Asimismo, ambas partes fijan su domicilio legal en la ciudad de Cusco para cualquier notificación judicial.</p>
 
                 <p><strong>SEXTA: CONFORMIDAD</strong><br>
-                Ambas partes declaran que en este acto no existe error, dolo ni mala fe, firmando y poniendo su huella digital en señal de total conformidad en la localidad de <strong>Cusco</strong>, el día <strong>${lDay} de ${lMonth} del ${lYear}</strong>.</p>
+                En señal de plena conformidad, las partes firman y estampan su huella digital en la localidad de <strong>Cusco</strong>, el día <strong>${lDay} de ${lMonth} del ${lYear}</strong>.</p>
             </div>
 
             <div class="sig-container" style="margin-top: 100px; display: flex; justify-content: space-between;">
