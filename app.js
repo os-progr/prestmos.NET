@@ -108,7 +108,6 @@ function init() {
 
     loanAmountInput.addEventListener('input', updatePreview);
     interestRateInput.addEventListener('input', updatePreview);
-    loanQuotasInput.addEventListener('input', updatePreview);
 
     form.addEventListener('submit', handleAddOrEditLoan);
     searchInput.addEventListener('input', handleSearch);
@@ -322,9 +321,6 @@ function deleteLoanFromDB(id) {
         request.onsuccess = () => resolve();
         request.onerror = (e) => reject(e.target.error);
     });
-}
-
-/* =========================================
 }
 
 /* =========================================
