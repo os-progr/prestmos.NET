@@ -7,7 +7,9 @@ const WA_TEXT_TEMPLATE = "¡Hola! 🧾 Confirmación de Abono.\n\n👤 Cliente: 
 const form = document.getElementById('loan-form');
 const editIdInput = document.getElementById('edit-id');
 const clientNameInput = document.getElementById('clientName');
+const clientDniInput = document.getElementById('clientDni');
 const clientPhoneInput = document.getElementById('clientPhone');
+const clientAddressInput = document.getElementById('clientAddress');
 const loanAmountInput = document.getElementById('loanAmount');
 const interestRateInput = document.getElementById('interestRate');
 const loanDateInput = document.getElementById('loanDate');
@@ -422,7 +424,9 @@ async function handleAddOrEditLoan(e) {
 
     const editId = editIdInput.value;
     const name = clientNameInput.value.trim();
+    const dni = clientDniInput.value.trim();
     const phone = clientPhoneInput.value.trim();
+    const address = clientAddressInput.value.trim();
     const amount = parseFloat(loanAmountInput.value);
     const rate = parseFloat(interestRateInput.value) || 0;
     const quotas = parseInt(loanQuotasInput.value) || 1;
@@ -441,7 +445,9 @@ async function handleAddOrEditLoan(e) {
         const existingId = loans.findIndex(l => l.id === editId);
         if(existingId >= 0) {
             loans[existingId].name = name;
+            loans[existingId].dni = dni;
             loans[existingId].phone = phone;
+            loans[existingId].address = address;
             loans[existingId].amount = amount;
             loans[existingId].interest = amount * (rate/100);
             loans[existingId].total = totalToPay;
@@ -460,7 +466,9 @@ async function handleAddOrEditLoan(e) {
         const newLoan = {
             id: crypto.randomUUID(),
             name: name,
+            dni: dni,
             phone: phone,
+            address: address,
             amount: amount,
             interest: amount * (rate/100),
             total: totalToPay,
@@ -514,7 +522,9 @@ window.startEditMode = function(id) {
     
     editIdInput.value = loan.id;
     clientNameInput.value = loan.name;
+    clientDniInput.value = loan.dni || "";
     clientPhoneInput.value = loan.phone || "";
+    clientAddressInput.value = loan.address || "";
     loanAmountInput.value = loan.amount;
     
     const r = (loan.interest / loan.amount) * 100;
@@ -815,7 +825,7 @@ window.sendReminder = function(id) {
     const loan = loans.find(l => l.id === id);
     if (!loan) return;
     const { restante } = getLoanSummary(loan);
-    const msg = `Hola *${loan.name}* 👋\n\nTe escribimos de *CapitalFlow* para saludarte y recordarte amablemente que tu crédito activo por un saldo pendiente de *S/ ${restante.toFixed(2)}* tiene como fecha de vencimiento el *${formatObjDate(loan.dueDate)}*.\n\nPor favor, comunícate con nosotros si requieres asistencia.\n\n¡Que tengas un excelente día! 🚀`;
+    const msg = `Hola *${loan.name}* 👋\n\nTe escribimos de *PRESTACUSCO* para saludarte y recordarte amablemente que tu crédito activo por un saldo pendiente de *S/ ${restante.toFixed(2)}* tiene como fecha de vencimiento el *${formatObjDate(loan.dueDate)}*.\n\nPor favor, comunícate con nosotros si requieres asistencia.\n\n¡Que tengas un excelente día! 🚀`;
     
     let url = `https://wa.me/?text=${encodeURIComponent(msg)}`;
     if (loan.phone) {
@@ -829,38 +839,53 @@ window.generateContract = function(id) {
     if (!loan) return;
     
     const printArea = document.getElementById('print-area');
-    const totalToPay = loan.total.toFixed(2);
+    const { total, interestAmt } = getLoanSummary(loan);
+    const totalToPay = total.toFixed(2);
+    const interestStr = interestAmt.toFixed(2);
+    const amountStr = loan.amount.toFixed(2);
     
     let dateStr = loan.date;
     if (!dateStr) dateStr = new Date().toISOString().split('T')[0];
     const dateE = new Date(dateStr + 'T12:00:00');
     
     const day = dateE.getDate();
-    const month = dateE.toLocaleString('es-ES', { month: 'long' });
+    const monthString = dateE.toLocaleString('es-ES', { month: 'long' });
     const year = dateE.getFullYear();
 
+    // Fecha actual para la firma
+    const now = new Date();
+    const dayNow = now.getDate();
+    const monthNow = now.toLocaleString('es-ES', { month: 'long' });
+    const yearNow = now.getFullYear();
+
     printArea.innerHTML = `
-        <h1>PAGARÉ A LA ORDEN</h1>
-        <p>Por la suma de <strong>S/ ${totalToPay}</strong></p>
-        <p>
-            Por este PAGARÉ, yo <strong>${loan.name}</strong>, me obligo incondicionalmente a pagar a la orden del acreedor de la cuenta, la cantidad total de <strong>S/ ${totalToPay} soles</strong>, valor recibido a mi entera satisfacción en calidad de préstamo el día <strong>${day} de ${month} de ${year}</strong>.
-        </p>
-        <p>
-            La fecha límite estipulada para la cancelación total y liberación del presente pagaré se acuerda para el día <strong>${formatObjDate(loan.dueDate)}</strong>. En caso de mora, acepto el cargo de la penalidad diaria de <strong>S/ 2.00</strong> estipulada de manera previa al desembolso por cada día de retraso.
-        </p>
-        <p>
-            Para constancia, firmo el presente documento y pongo mi huella dactilar como muestra de total conformidad de manera libre y voluntaria.
-        </p>
-        <div class="signatures">
-            <div class="sig-box">
-                <br><br><br><br>
-                Firma del Deudor<br>
-                Nombre: ${loan.name}<br>
-                ${loan.phone ? 'Celular: ' + loan.phone : ''}
-            </div>
-            <div class="sig-box">
-                <br><br><br><br>
-                Huella Digital
+        <div class="contract-container">
+            <h1>CONTRATO DE PRÉSTAMO DE DINERO</h1>
+            <p>Conste por el presente contrato Privado de Préstamo de Dinero que celebramos de una parte <strong>EL PRESTAMISTA</strong>: PRESTACUSCO PREMIUM, identificado con RUC N° 20123456789, con domicilio en Calle Procuradores 123, Cusco; y de la otra parte <strong>EL PRESTATARIO</strong>: <strong>${loan.name}</strong>, identificado con DNI N° <strong>${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '..................................................'}</strong>, quienes acuerdan lo siguiente:</p>
+            
+            <p><strong>1. OBJETO:</strong> EL PRESTAMISTA cede en calidad de préstamo al PRESTATARIO la suma de <strong>S/ ${amountStr}</strong> soles. Dicho monto genera un interés de <strong>S/ ${interestStr}</strong> soles, sumando un total a devolver de <strong>S/ ${totalToPay}</strong> soles.</p>
+            
+            <p><strong>2. MEDIO DE PAGO:</strong> Las partes acuerdan que tanto la entrega como la devolución del dinero podrán realizarse mediante efectivo o a través de las aplicaciones digitales Yape, Plin, etc. El PRESTATARIO declara haber recibido el capital a su entera satisfacción mediante uno de estos medios.</p>
+            
+            <p><strong>3. DEVOLUCIÓN:</strong> EL PRESTATARIO se compromete a devolver la suma total (capital e intereses) a más tardar el día: <strong>${formatObjDate(loan.dueDate)}</strong>.</p>
+            
+            <p><strong>4. MORA:</strong> Por cada día de retraso en la fecha pactada, se aplicará una penalidad de <strong>S/ ${PENALTY_PER_DAY.toFixed(2)}</strong> soles por día, la cual se sumará a la deuda total hasta su cancelación.</p>
+            
+            <p><strong>5.</strong> Ambas partes declaran que en este acto no existe error, dolo ni mala fe, firmando y poniendo su huella digital en señal de conformidad en la localidad de <strong>Cusco</strong>, el día <strong>${dayNow} de ${monthNow} de ${yearNow}</strong>.</p>
+
+            <div class="signatures-wrap">
+                <div class="sig-section">
+                    <br><br>_________________________<br>
+                    <strong>PRESTAMISTA</strong><br>
+                    RUC: 20123456789<br>
+                    Huella: [ ]
+                </div>
+                <div class="sig-section">
+                    <br><br>_________________________<br>
+                    <strong>PRESTATARIO</strong><br>
+                    DNI: ${loan.dni || '..........'}<br>
+                    Huella: [ ]
+                </div>
             </div>
         </div>
     `;

@@ -417,9 +417,17 @@ body {
 @media print {
     body * { visibility: hidden; }
     #print-area, #print-area * { visibility: visible; }
-    #print-area { position: absolute; left: 0; top: 0; width: 100%; border: none; background: white; color: black; padding: 2.5rem; font-family: 'Times New Roman', serif; font-size: 14pt; box-shadow: none; border-radius: 0; }
-    #print-area h1 { text-align: center; text-transform: uppercase; font-size: 22pt; margin-bottom: 2rem; }
-    #print-area p { margin-bottom: 1.5rem; line-height: 1.8; text-align: justify; }
-    #print-area .signatures { margin-top: 6rem; display: flex; justify-content: space-around; }
-    #print-area .sig-box { text-align: center; width: 40%; border-top: 1px solid black; padding-top: 0.5rem; font-weight: bold; }
+    #print-area { 
+        position: absolute; left: 0; top: 0; width: 100%; border: none; 
+        background: white; color: black; padding: 2.5rem; 
+        font-family: 'Times New Roman', serif; font-size: 12pt; 
+        box-shadow: none; border-radius: 0; 
+    }
+    .contract-container { max-width: 800px; margin: 0 auto; }
+    #print-area h1 { text-align: center; text-transform: uppercase; font-size: 18pt; margin-bottom: 2.5rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; }
+    #print-area p { margin-bottom: 1.2rem; line-height: 1.6; text-align: justify; }
+    #print-area strong { font-weight: bold; }
+    
+    .signatures-wrap { margin-top: 5rem; display: flex; justify-content: space-between; gap: 2rem; }
+    .sig-section { text-align: center; width: 45%; border-top: 1px solid black; padding-top: 0.5rem; font-size: 11pt; }
 }
