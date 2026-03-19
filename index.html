@@ -165,10 +165,14 @@
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label for="interestRate">Interés (%)</label>
-                                <div class="input-wrapper">
-                                    <i data-lucide="percent"></i>
-                                    <input type="number" id="interestRate" min="0" step="1" placeholder="Ej. 5" value="5">
+                                <label for="interestRate">Interés (<span id="interest-label">%</span>)</label>
+                                <div class="input-wrapper interest-input-group">
+                                    <i data-lucide="percent" id="interest-icon"></i>
+                                    <input type="number" id="interestRate" min="0" step="0.5" placeholder="Ej. 10" value="10">
+                                    <select id="interestMode" class="interest-mode-select">
+                                        <option value="percent">%</option>
+                                        <option value="fixed">S/</option>
+                                    </select>
                                 </div>
                             </div>
                         </div>

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'capital-flow-v4';
+const CACHE_NAME = 'capital-flow-v6';
 const ASSETS = [
     '/',
     '/index.html',

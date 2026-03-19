@@ -1,6 +1,6 @@
 // CONSTANTS
 const PIN_CODE = "092022edith";
-const PENALTY_PER_DAY = 2.00; // S/ 2.00 mora por día
+const PENALTY_PER_DAY = 0.50; // S/ 0.50 mora por día
 const WA_TEXT_TEMPLATE = "¡Hola! 🧾 Confirmación de Abono.\n\n👤 Cliente: {name}\n💰 Abono: S/ {amount}\n💳 Saldo Anterior: S/ {prev}\n📉 Nuevo Saldo: S/ {newTotal}\n\nGracias por su pago.";
 
 // DOM Elements
@@ -12,6 +12,9 @@ const clientPhoneInput = document.getElementById('clientPhone');
 const clientAddressInput = document.getElementById('clientAddress');
 const loanAmountInput = document.getElementById('loanAmount');
 const interestRateInput = document.getElementById('interestRate');
+const interestModeSelect = document.getElementById('interestMode');
+const interestLabel = document.getElementById('interest-label');
+const interestIcon = document.getElementById('interest-icon');
 const loanDateInput = document.getElementById('loanDate');
 const dueDateInput = document.getElementById('dueDate');
 const loanQuotasInput = document.getElementById('loanQuotas');
@@ -124,6 +127,14 @@ function init() {
     
     payForm.addEventListener('submit', handleAddPayment);
     loginForm.addEventListener('submit', handleLogin);
+
+    interestModeSelect.addEventListener('change', () => {
+        const isFixed = interestModeSelect.value === 'fixed';
+        interestLabel.textContent = isFixed ? 'S/' : '%';
+        interestIcon.setAttribute('data-lucide', isFixed ? 'banknote' : 'percent');
+        lucide.createIcons();
+        updatePreview();
+    });
     logoutBtn.addEventListener('click', handleLogout);
     shareWaBtn.addEventListener('click', sendWaMessage);
     
@@ -365,7 +376,10 @@ function resetFileInputsUI() {
 /* =========================================
    CALCULATIONS
 ========================================= */
-function calcTotalPay(amount, rate) {
+function calcTotalPay(amount, rate, mode = 'percent') {
+    if (mode === 'fixed') {
+        return amount + rate;
+    }
     const interest = amount * (rate / 100);
     return amount + interest;
 }
@@ -408,7 +422,8 @@ function updatePreview() {
     const rate = parseFloat(interestRateInput.value) || 0;
     const quotas = parseInt(loanQuotasInput.value) || 1;
     
-    const total = calcTotalPay(amount, rate);
+    const mode = interestModeSelect.value;
+    const total = calcTotalPay(amount, rate, mode);
     previewTotal.textContent = `S/ ${total.toFixed(2)}`;
     
     if (quotas > 1) {
@@ -429,6 +444,7 @@ async function handleAddOrEditLoan(e) {
     const address = clientAddressInput.value.trim();
     const amount = parseFloat(loanAmountInput.value);
     const rate = parseFloat(interestRateInput.value) || 0;
+    const mode = interestModeSelect.value;
     const quotas = parseInt(loanQuotasInput.value) || 1;
     const dateStr = loanDateInput.value;
     const dueDateStr = dueDateInput.value;
@@ -439,7 +455,7 @@ async function handleAddOrEditLoan(e) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i data-lucide="loader" class="pulse"></i> Procesando...';
 
-    const totalToPay = calcTotalPay(amount, rate);
+    const totalToPay = calcTotalPay(amount, rate, mode);
 
     if (editId) {
         const existingId = loans.findIndex(l => l.id === editId);
@@ -449,7 +465,9 @@ async function handleAddOrEditLoan(e) {
             loans[existingId].phone = phone;
             loans[existingId].address = address;
             loans[existingId].amount = amount;
-            loans[existingId].interest = amount * (rate/100);
+            loans[existingId].interest = (mode === 'fixed') ? rate : (amount * (rate/100));
+            loans[existingId].interestMode = mode;
+            loans[existingId].interestVal = rate;
             loans[existingId].total = totalToPay;
             loans[existingId].date = dateStr;
             loans[existingId].dueDate = dueDateStr;
@@ -470,7 +488,9 @@ async function handleAddOrEditLoan(e) {
             phone: phone,
             address: address,
             amount: amount,
-            interest: amount * (rate/100),
+            interest: (mode === 'fixed') ? rate : (amount * (rate/100)),
+            interestMode: mode,
+            interestVal: rate,
             total: totalToPay,
             date: dateStr,
             dueDate: dueDateStr,
@@ -527,9 +547,17 @@ window.startEditMode = function(id) {
     clientAddressInput.value = loan.address || "";
     loanAmountInput.value = loan.amount;
     
-    const r = (loan.interest / loan.amount) * 100;
-    interestRateInput.value = r;
-
+    if (loan.interestMode === 'fixed') {
+        interestModeSelect.value = 'fixed';
+        interestRateInput.value = loan.interestVal || loan.interest;
+    } else {
+        interestModeSelect.value = 'percent';
+        const r = (loan.interest / loan.amount) * 100;
+        interestRateInput.value = loan.interestVal || r;
+    }
+    
+    interestLabel.textContent = (interestModeSelect.value === 'fixed' ? 'S/' : '%');
+    
     loanDateInput.value = loan.date;
     dueDateInput.value = loan.dueDate;
     notesInput.value = loan.notes || "";
@@ -844,15 +872,7 @@ window.generateContract = function(id) {
     const interestStr = loan.interest.toFixed(2);
     const amountStr = loan.amount.toFixed(2);
     
-    let dateStr = loan.date;
-    if (!dateStr) dateStr = new Date().toISOString().split('T')[0];
-    const dateE = new Date(dateStr + 'T12:00:00');
-    
-    const day = dateE.getDate();
-    const monthString = dateE.toLocaleString('es-ES', { month: 'long' });
-    const year = dateE.getFullYear();
-
-    // Fecha actual para la firma
+    const shortId = loan.id.split('-')[0].toUpperCase();
     const now = new Date();
     const dayNow = now.getDate();
     const monthNow = now.toLocaleString('es-ES', { month: 'long' });
@@ -860,32 +880,61 @@ window.generateContract = function(id) {
 
     printArea.innerHTML = `
         <div class="contract-container">
-            <h1>CONTRATO DE PRÉSTAMO DE DINERO</h1>
-            <p>Conste por el presente contrato Privado de Préstamo de Dinero que celebramos de una parte <strong>EL PRESTAMISTA</strong>: <strong>JUAN DAVID PUCLLA QUISPE</strong>, identificado con DNI N° <strong>60257586</strong>, con domicilio en <strong>..................................................</strong>; y de la otra parte <strong>EL PRESTATARIO</strong>: <strong>${loan.name}</strong>, identificado con DNI N° <strong>${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '..................................................'}</strong>, quienes acuerdan lo siguiente:</p>
-            
-            <p><strong>1. OBJETO:</strong> EL PRESTAMISTA cede en calidad de préstamo al PRESTATARIO la suma de <strong>S/ ${amountStr}</strong> soles. Dicho monto genera un interés de <strong>S/ ${interestStr}</strong> soles, sumando un total a devolver de <strong>S/ ${totalToPay}</strong> soles.</p>
-            
-            <p><strong>2. MEDIO DE PAGO:</strong> Las partes acuerdan que tanto la entrega como la devolución del dinero podrán realizarse mediante efectivo o a través de las aplicaciones digitales Yape, Plin, etc. El PRESTATARIO declara haber recibido el capital a su entera satisfacción mediante uno de estos medios.</p>
-            
-            <p><strong>3. DEVOLUCIÓN:</strong> EL PRESTATARIO se compromete a devolver la suma total (capital e intereses) a más tardar el día: <strong>${formatObjDate(loan.dueDate)}</strong>.</p>
-            
-            <p><strong>4. MORA:</strong> Por cada día de retraso en la fecha pactada, se aplicará una penalidad de <strong>S/ ${PENALTY_PER_DAY.toFixed(2)}</strong> soles por día, la cual se sumará a la deuda total hasta su cancelación.</p>
-            
-            <p><strong>5.</strong> Ambas partes declaran que en este acto no existe error, dolo ni mala fe, firmando y poniendo su huella digital en señal de conformidad en la localidad de <strong>Cusco</strong>, el día <strong>${dayNow} de ${monthNow} de ${yearNow}</strong>.</p>
+            <header class="contract-header">
+                <div class="header-brand">
+                    <h1>PRESTACUSCO</h1>
+                    <p>Servicios Financieros Cusco</p>
+                </div>
+                <div class="header-meta">
+                    <div class="doc-id">CONTRATO N° ${shortId}</div>
+                    <div class="doc-date">Cusco, ${dayNow} de ${monthNow} de ${yearNow}</div>
+                </div>
+            </header>
 
-            <div class="signatures-wrap" style="margin-top: 100px;">
+            <h2>CONTRATO PRIVADO DE PRÉSTAMO DE DINERO</h2>
+
+            <div class="contract-section">
+                <span class="section-title">I. IDENTIFICACIÓN DE LAS PARTES</span>
+                <table class="data-table">
+                    <tr><th>PRESTAMISTA</th><td>JUAN DAVID PUCLLA QUISPE (DNI: 60257586)</td></tr>
+                    <tr><th>DOMICILIO</th><td>Cusco, Perú</td></tr>
+                    <tr><th>PRESTATARIO</th><td>${loan.name} (DNI: ${loan.dni || '..........'})</td></tr>
+                    <tr><th>DOMICILIO CLIENTE</th><td>${loan.address || '..................................................'}</td></tr>
+                </table>
+            </div>
+
+            <div class="contract-section">
+                <span class="section-title">II. CONDICIONES DEL PRÉSTAMO</span>
+                <table class="data-table">
+                    <tr><th>CAPITAL PRESTADO</th><td><strong>S/ ${amountStr}</strong></td></tr>
+                    <tr><th>INTERÉS PACTADO</th><td>S/ ${interestStr}</td></tr>
+                    <tr><th>TOTAL A DEVOLVER</th><td><strong>S/ ${totalToPay}</strong></td></tr>
+                    <tr><th>FECHA VENCIMIENTO</th><td>${formatObjDate(loan.dueDate)}</td></tr>
+                    <tr><th>MORA DIARIA</th><td>S/ ${PENALTY_PER_DAY.toFixed(2)}</td></tr>
+                </table>
+            </div>
+
+            <div class="contract-section">
+                <span class="section-title">III. CLÁUSULAS DEL CONTRATO</span>
+                <p><strong>1. OBJETO:</strong> EL PRESTAMISTA entrega en este acto la suma de capital indicada, libre de toda carga y de procedencia lícita, recibiendo EL PRESTATARIO dicha suma a su entera satisfacción.</p>
+                <p><strong>2. INTERESES:</strong> Las partes acuerdan libremente que el capital generará el interés detallado en las condiciones generales, el cual será cancelado junto al capital en la fecha estipulada.</p>
+                <p><strong>3. DEVOLUCIÓN:</strong> EL PRESTATARIO se obliga a la devolución total del monto adeudado en la fecha de vencimiento pactada, sin necesidad de requerimiento previo.</p>
+                <p><strong>4. INCUMPLIMIENTO:</strong> En caso de mora, se aplicará la penalidad diaria establecida de forma automática sobre el saldo pendiente, la cual se capitalizará diariamente hasta la cancelación total.</p>
+                <p><strong>5. CONFORMIDAD:</strong> Ambas partes declaran que en la celebración de este contrato no existe vicio alguno del consentimiento, firmando y poniendo su huella dactilar como muestra de ratificación.</p>
+            </div>
+
+            <div class="signatures-wrap">
                 <div class="sig-section">
+                    <div class="fingerprint-box">HUELLA</div>
                     <br><br>_________________________<br>
-                    <strong>PRESTAMISTA</strong><br>
-                    Nombre: JUAN DAVID PUCLLA QUISPE<br>
-                    DNI: 60257586<br>
-                    Huella: [ ]
+                    <strong>Firma del Prestamista</strong><br>
+                    Juan David Puclla Quispe
                 </div>
                 <div class="sig-section">
+                    <div class="fingerprint-box">HUELLA</div>
                     <br><br>_________________________<br>
-                    <strong>PRESTATARIO</strong><br>
-                    DNI: ${loan.dni || '..........'}<br>
-                    Huella: [ ]
+                    <strong>Firma del Prestatario</strong><br>
+                    Nombre: ${loan.name}
                 </div>
             </div>
         </div>

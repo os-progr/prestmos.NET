@@ -272,6 +272,14 @@ body {
 }
 .preview-row { display: flex; justify-content: space-between; font-size: 0.95rem; align-items: center; }
 
+.interest-input-group { display: flex !important; align-items: center; }
+.interest-mode-select { 
+    background: var(--bg-subtle); border: none; color: var(--accent); 
+    font-weight: 700; cursor: pointer; padding: 0 0.5rem; outline: none;
+    border-left: 1px solid var(--border-subtle); height: 100%;
+}
+.interest-mode-select:hover { color: #fff; }
+
 .btn { 
     display: flex; align-items: center; justify-content: center; gap: 0.5rem; 
     padding: 0.85rem 1.5rem; border-radius: 12px; font-size: 0.95rem; font-weight: 600; 
@@ -419,15 +427,32 @@ body {
     #print-area, #print-area * { visibility: visible; }
     #print-area { 
         position: absolute; left: 0; top: 0; width: 100%; border: none; 
-        background: white; color: black; padding: 2.5rem; 
-        font-family: 'Times New Roman', serif; font-size: 12pt; 
+        background: white; color: black; padding: 1.5cm; 
+        font-family: 'Times New Roman', serif; font-size: 11pt; 
         box-shadow: none; border-radius: 0; 
     }
-    .contract-container { max-width: 800px; margin: 0 auto; }
-    #print-area h1 { text-align: center; text-transform: uppercase; font-size: 18pt; margin-bottom: 2.5rem; border-bottom: 2px solid #000; padding-bottom: 0.5rem; }
-    #print-area p { margin-bottom: 1.2rem; line-height: 1.6; text-align: justify; }
-    #print-area strong { font-weight: bold; }
+    .contract-container { max-width: 100%; margin: 0 auto; border: 1px solid #eee; padding: 2rem; border-radius: 8px; }
+    .contract-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #333; padding-bottom: 1rem; margin-bottom: 2rem; }
+    .header-brand h1 { font-size: 24pt; color: #111; margin: 0; text-transform: uppercase; letter-spacing: 2px; }
+    .header-brand p { font-size: 9pt; color: #666; margin: 0; }
+    .header-meta { text-align: right; }
+    .header-meta .doc-id { font-weight: bold; font-size: 12pt; color: #000; }
     
-    .signatures-wrap { margin-top: 5rem; display: flex; justify-content: space-between; gap: 2rem; }
-    .sig-section { text-align: center; width: 45%; border-top: 1px solid black; padding-top: 0.5rem; font-size: 11pt; }
+    .contract-section { margin-bottom: 1.5rem; }
+    .section-title { font-size: 11pt; font-weight: bold; text-transform: uppercase; border-bottom: 1px solid #ddd; padding-bottom: 0.3rem; margin-bottom: 0.8rem; display: block; }
+    
+    .data-table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    .data-table th, .data-table td { border: 1px solid #ddd; padding: 0.6rem; text-align: left; }
+    .data-table th { background: #f9f9f9; font-weight: bold; width: 30%; }
+    
+    #print-area h2 { text-align: center; font-size: 16pt; margin-bottom: 1.5rem; text-decoration: underline; }
+    #print-area p { margin-bottom: 1rem; line-height: 1.5; text-align: justify; }
+    
+    .signatures-wrap { margin-top: 4rem; display: flex; justify-content: space-between; gap: 3rem; }
+    .sig-section { text-align: center; width: 45%; border-top: 1px solid black; padding-top: 1rem; position: relative; }
+    .fingerprint-box { 
+        position: absolute; top: -75px; right: 10px; width: 60px; height: 75px; 
+        border: 1px dashed #ccc; display: flex; align-items: center; justify-content: center; 
+        font-size: 7pt; color: #999; text-transform: uppercase;
+    }
 }
