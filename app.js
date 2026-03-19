@@ -53,6 +53,8 @@ const payDateInput = document.getElementById('pay-date');
 const payClientName = document.getElementById('pay-client-name');
 const payRemaining = document.getElementById('pay-remaining');
 const payForm = document.getElementById('pay-form');
+const payHistoryList = document.getElementById('pay-history');
+const payQuotaInfo = document.getElementById('pay-quota-info');
 
 // WhatsApp Voucher
 const vDate = document.getElementById('v-date');
