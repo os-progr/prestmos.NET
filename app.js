@@ -832,6 +832,7 @@ window.generateContract = function(id) {
     
     const dDay = dueDate.getDate();
     const dMonth = monthsNames[dueDate.getMonth()];
+    const dYear = dueDate.getFullYear();
     printArea.innerHTML = `
         <div class="contract-paper formal-mode">
             <div class="contract-header" style="margin-top: 20px;">
