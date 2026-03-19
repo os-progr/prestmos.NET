@@ -861,7 +861,7 @@ window.generateContract = function(id) {
     printArea.innerHTML = `
         <div class="contract-container">
             <h1>CONTRATO DE PRÉSTAMO DE DINERO</h1>
-            <p>Conste por el presente contrato Privado de Préstamo de Dinero que celebramos de una parte <strong>EL PRESTAMISTA</strong>: PRESTACUSCO, identificado con RUC N° 20123456789, con domicilio en Calle Procuradores 123, Cusco; y de la otra parte <strong>EL PRESTATARIO</strong>: <strong>${loan.name}</strong>, identificado con DNI N° <strong>${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '..................................................'}</strong>, quienes acuerdan lo siguiente:</p>
+            <p>Conste por el presente contrato Privado de Préstamo de Dinero que celebramos de una parte <strong>EL PRESTAMISTA</strong>: <strong>JUAN DAVID PUCLLA QUISPE</strong>, identificado con DNI N° <strong>60257586</strong>, con domicilio en <strong>..................................................</strong>; y de la otra parte <strong>EL PRESTATARIO</strong>: <strong>${loan.name}</strong>, identificado con DNI N° <strong>${loan.dni || '..........'}</strong>, con domicilio en <strong>${loan.address || '..................................................'}</strong>, quienes acuerdan lo siguiente:</p>
             
             <p><strong>1. OBJETO:</strong> EL PRESTAMISTA cede en calidad de préstamo al PRESTATARIO la suma de <strong>S/ ${amountStr}</strong> soles. Dicho monto genera un interés de <strong>S/ ${interestStr}</strong> soles, sumando un total a devolver de <strong>S/ ${totalToPay}</strong> soles.</p>
             
@@ -873,11 +873,12 @@ window.generateContract = function(id) {
             
             <p><strong>5.</strong> Ambas partes declaran que en este acto no existe error, dolo ni mala fe, firmando y poniendo su huella digital en señal de conformidad en la localidad de <strong>Cusco</strong>, el día <strong>${dayNow} de ${monthNow} de ${yearNow}</strong>.</p>
 
-            <div class="signatures-wrap">
+            <div class="signatures-wrap" style="margin-top: 100px;">
                 <div class="sig-section">
                     <br><br>_________________________<br>
                     <strong>PRESTAMISTA</strong><br>
-                    RUC: 20123456789<br>
+                    Nombre: JUAN DAVID PUCLLA QUISPE<br>
+                    DNI: 60257586<br>
                     Huella: [ ]
                 </div>
                 <div class="sig-section">
