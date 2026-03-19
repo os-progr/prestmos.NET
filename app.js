@@ -354,11 +354,17 @@ function calculatePenalty(loan) {
 }
 
 function getLoanSummary(loan) {
+    const { mora, baseRestante, diffDays } = calculatePenalty(loan);
     const abonado = loan.abonos ? loan.abonos.reduce((sum, a) => sum + a.amount, 0) : 0;
-    const { mora } = calculatePenalty(loan);
     const restanteTotal = (loan.total + mora) - abonado;
     
-    return { abonado, restante: restanteTotal, mora };
+    return { abonado, restante: restanteTotal, mora, diffDays };
+}
+
+function getStatus(loan, restante, diffDays) {
+    if (restante <= 0) return { label: 'Saldado', class: 'status-paid', icon: 'check-circle' };
+    if (diffDays > 0) return { label: 'En Mora', class: 'status-late', icon: 'alert-circle' };
+    return { label: 'Pendiente', class: 'status-pending', icon: 'clock' };
 }
 
 
@@ -773,36 +779,38 @@ function numberToWords(n) {
     if (n < 0) return 'MENOS ' + numberToWords(Math.abs(n));
     
     let words = '';
+    let whole = Math.floor(n);
+    let cents = Math.round((n - whole) * 100);
     
-    if (n >= 1000000) {
-        let millions = Math.floor(n / 1000000);
+    if (whole >= 1000000) {
+        let millions = Math.floor(whole / 1000000);
         words += (millions === 1 ? 'UN MILLÓN' : numberToWords(millions) + ' MILLONES') + ' ';
-        n %= 1000000;
+        whole %= 1000000;
     }
 
-    if (n >= 1000) {
-        let thousands = Math.floor(n / 1000);
+    if (whole >= 1000) {
+        let thousands = Math.floor(whole / 1000);
         words += (thousands === 1 ? 'MIL' : numberToWords(thousands) + ' MIL') + ' ';
-        n %= 1000;
+        whole %= 1000;
     }
     
-    if (n >= 100) {
-        let hundreds = Math.floor(n / 100);
-        if (hundreds === 1 && n % 100 === 0) words += 'CIEN ';
+    if (whole >= 100) {
+        let hundreds = Math.floor(whole / 100);
+        if (hundreds === 1 && whole % 100 === 0) words += 'CIEN ';
         else if (hundreds === 1) words += 'CIENTO ';
         else if (hundreds === 5) words += 'QUINIENTOS ';
         else if (hundreds === 7) words += 'SETECIENTOS ';
         else if (hundreds === 9) words += 'NOVECIENTOS ';
         else words += ones[hundreds] + 'CIENTOS ';
-        n %= 100;
+        whole %= 100;
     }
     
-    if (n >= 20) {
-        words += tens[Math.floor(n / 10)] + (n % 10 !== 0 ? ' Y ' + ones[n % 10] : '') + ' ';
-    } else if (n >= 10) {
-        words += teens[n - 10] + ' ';
-    } else if (n > 0) {
-        words += ones[n] + ' ';
+    if (whole >= 20) {
+        words += tens[Math.floor(whole / 10)] + (whole % 10 !== 0 ? ' Y ' + ones[whole % 10] : '') + ' ';
+    } else if (whole >= 10) {
+        words += teens[whole - 10] + ' ';
+    } else if (whole > 0) {
+        words += ones[whole] + ' ';
     }
     
     return words.trim();
