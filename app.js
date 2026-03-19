@@ -340,7 +340,7 @@ function calculatePenalty(loan) {
     const due = new Date(loan.dueDate + 'T12:00:00');
     
     const diffTime = today - due;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
     const abonado = loan.abonos ? loan.abonos.reduce((sum, a) => sum + a.amount, 0) : 0;
     const baseRestante = loan.total - abonado;
