@@ -1,7 +1,9 @@
 // CONSTANTS
-const PIN_CODE = "092022edith";
 const PENALTY_PER_DAY = 0.50; // S/ 0.50 mora por día
 const WA_TEXT_TEMPLATE = "¡Hola! 🧾 Confirmación de Abono.\n\n👤 Cliente: {name}\n💰 Abono: S/ {amount}\n💳 Saldo Anterior: S/ {prev}\n📉 Nuevo Saldo: S/ {newTotal}\n\nGracias por su pago.";
+const PIN_CODE = 'edith2007';
+const INACTIVITY_TIMEOUT = 10 * 60 * 1000; // 10 minutos de inactividad
+let inactivityTimer;
 
 // DOM Elements
 const form = document.getElementById('loan-form');
@@ -64,14 +66,26 @@ const vPrev = document.getElementById('v-prev');
 const vNew = document.getElementById('v-new');
 const shareWaBtn = document.getElementById('share-wa-btn');
 
-// Login
+// Theme setup elements
+const themeToggleBtn = document.getElementById('theme-toggle');
+const logoutBtn = document.getElementById('logout-btn');
 const loginOverlay = document.getElementById('login-overlay');
-const loginForm = document.getElementById('login-form');
+const loginFormAuth = document.getElementById('login-form-auth');
 const pinInput = document.getElementById('pin-input');
 const loginError = document.getElementById('login-error');
-const dashboardMain = document.getElementById('dashboard-main');
-const logoutBtn = document.getElementById('logout-btn');
-const themeToggleBtn = document.getElementById('theme-toggle');
+const dashboardMain = document.querySelector('.dashboard-container');
+
+// File Uploads
+const loanFilesInput   = document.getElementById('loan-files');
+const filesModal       = document.getElementById('files-modal');
+const filesList        = document.getElementById('files-list');
+const filesEmpty       = document.getElementById('files-empty');
+const filesClientName  = document.getElementById('files-client-name');
+const addMoreFilesInput = document.getElementById('add-more-files');
+const currentFilesLoanId = { value: null };
+
+// #I - Notes
+const loanNotesInput = document.getElementById('loanNotes');
 
 // App State
 let db;
@@ -79,11 +93,49 @@ let loans = [];
 let currentWaMessage = "";
 let currentWaPhone = "";
 let portfolioChart = null;
+let dueChart = null;            // #E
+let sortState = { col: null, asc: true }; // #7 sort
+let isCompactMode = false;       // #K
+let currentFilter = 'all';      // #G
+
+/* =========================================
+   CUSTOM MODAL SYSTEM - #C
+========================================= */
+function showConfirm(message, onConfirm, onCancel) {
+    const modal = document.getElementById('custom-confirm-modal');
+    document.getElementById('confirm-msg').textContent = message;
+    modal.classList.remove('hidden');
+
+    const okBtn     = document.getElementById('confirm-ok-btn');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+    const cleanup = () => modal.classList.add('hidden');
+
+    okBtn.onclick = () => { cleanup(); if (onConfirm) onConfirm(); };
+    cancelBtn.onclick = () => { cleanup(); if (onCancel) onCancel(); };
+}
+
+function showAlert(message, type = 'info') {
+    const modal = document.getElementById('custom-alert-modal');
+    document.getElementById('alert-msg').textContent = message;
+    // Color by type
+    const icon = document.getElementById('alert-icon');
+    if (type === 'danger')  { icon.setAttribute('data-lucide','alert-triangle'); icon.style.color = 'var(--danger)'; }
+    else if (type === 'success') { icon.setAttribute('data-lucide','check-circle'); icon.style.color = 'var(--success)'; }
+    else { icon.setAttribute('data-lucide','info'); icon.style.color = 'var(--info)'; }
+    lucide.createIcons();
+    modal.classList.remove('hidden');
+    document.getElementById('alert-ok-btn').onclick = () => modal.classList.add('hidden');
+}
 
 // Initialize App
 function init() {
+    loginFormAuth.addEventListener('submit', handleLogin);
     checkAuth();
-    
+    setupInactivityTimer();
+}
+
+function startApp() {
     // Default dates
     const today = new Date();
     loanDateInput.valueAsDate = today;
@@ -96,13 +148,16 @@ function init() {
         loadDataFromDB();
     }).catch(err => {
         console.error("Error IDB:", err);
-        alert("Tu navegador no soporta IndexedDB.");
+        showAlert("Tu navegador no soporta IndexedDB.", 'danger');
     });
-    
+
     initChart();
+    initDueChart(); // #E
 
     loanAmountInput.addEventListener('input', updatePreview);
     interestRateInput.addEventListener('input', updatePreview);
+    loanDateInput.addEventListener('change', updatePreview);
+    dueDateInput.addEventListener('change', updatePreview);
 
     form.addEventListener('submit', handleAddOrEditLoan);
     searchInput.addEventListener('input', handleSearch);
@@ -111,7 +166,6 @@ function init() {
     importJson.addEventListener('change', importFromJSON);
     
     payForm.addEventListener('submit', handleAddPayment);
-    loginForm.addEventListener('submit', handleLogin);
 
     interestModeSelect.addEventListener('change', () => {
         const isFixed = interestModeSelect.value === 'fixed';
@@ -120,9 +174,47 @@ function init() {
         lucide.createIcons();
         updatePreview();
     });
-    logoutBtn.addEventListener('click', handleLogout);
     shareWaBtn.addEventListener('click', sendWaMessage);
+
+    // File input listeners
+    loanFilesInput.addEventListener('change', (e) => {
+        const fileLabel = document.querySelector('label[for="loan-files"]');
+        if (e.target.files.length > 0) {
+            fileLabel.classList.add('has-file');
+            fileLabel.innerHTML = `<i data-lucide="check-circle"></i> ${e.target.files.length} archivos seleccionados`;
+        } else {
+            fileLabel.classList.remove('has-file');
+            fileLabel.innerHTML = '<i data-lucide="paperclip"></i> Seleccionar Archivos';
+        }
+        lucide.createIcons();
+    });
+
+    addMoreFilesInput.addEventListener('change', (e) => {
+        const fileLabel = document.querySelector('label[for="add-more-files"]');
+        if (e.target.files.length > 0) {
+            fileLabel.classList.add('has-file');
+            fileLabel.innerHTML = `<i data-lucide="check-circle"></i> ${e.target.files.length} seleccionados`;
+        } else {
+            fileLabel.classList.remove('has-file');
+            fileLabel.innerHTML = '<i data-lucide="plus"></i> Seleccionar';
+        }
+        lucide.createIcons();
+    });
     
+    // #K - Compact table toggle
+    const compactBtn = document.getElementById('compact-toggle-btn');
+    if (compactBtn) {
+        compactBtn.addEventListener('click', () => {
+            isCompactMode = !isCompactMode;
+            tableEl.classList.toggle('table-compact', isCompactMode);
+            compactBtn.title = isCompactMode ? 'Vista normal' : 'Vista compacta';
+            compactBtn.innerHTML = isCompactMode
+                ? '<i data-lucide="maximize-2"></i>'
+                : '<i data-lucide="minimize-2"></i>';
+            lucide.createIcons();
+        });
+    }
+
     toggleArchiveBtn.addEventListener('click', () => {
         archiveContent.classList.toggle('hidden');
         toggleArchiveBtn.textContent = archiveContent.classList.contains('hidden') ? 'Mostrar' : 'Ocultar';
@@ -146,16 +238,8 @@ function init() {
             portfolioChart.update();
         }
     });
-}
 
-function refreshIcons() {
-    try {
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
-        }
-    } catch (e) {
-        console.warn("Lucide not ready", e);
-    }
+    logoutBtn.addEventListener('click', handleLogout);
 }
 
 /* =========================================
@@ -165,11 +249,11 @@ function checkAuth() {
     const isAuth = sessionStorage.getItem('loanAppAuth') === 'true';
     if (isAuth) {
         loginOverlay.style.display = 'none';
-        dashboardMain.style.display = 'block';
+        dashboardMain.style.display = 'flex'; // It's a flex container in CSS
+        startApp();
     } else {
         loginOverlay.style.display = 'flex';
         dashboardMain.style.display = 'none';
-        pinInput.focus();
     }
 }
 
@@ -189,10 +273,42 @@ function handleLogin(e) {
 }
 
 function handleLogout() {
-    sessionStorage.removeItem('loanAppAuth');
-    checkAuth();
+    if(confirm('¿Seguro que deseas bloquear el sistema?')) {
+        forceLogout();
+    }
 }
 
+function forceLogout() {
+    sessionStorage.removeItem('loanAppAuth');
+    location.reload(); // Hard reload to clear all state
+}
+
+function setupInactivityTimer() {
+    const events = ['mousemove', 'mousedown', 'keypress', 'touchstart', 'scroll'];
+    events.forEach(event => {
+        window.addEventListener(event, resetInactivityTimer);
+    });
+    resetInactivityTimer();
+}
+
+function resetInactivityTimer() {
+    clearTimeout(inactivityTimer);
+    if (sessionStorage.getItem('loanAppAuth') === 'true') {
+        inactivityTimer = setTimeout(() => {
+            forceLogout();
+        }, INACTIVITY_TIMEOUT);
+    }
+}
+
+function refreshIcons() {
+    try {
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
+        }
+    } catch (e) {
+        console.warn("Lucide not ready", e);
+    }
+}
 
 /* =========================================
    CHART.JS LOGIC
@@ -260,6 +376,110 @@ function updateChartData(capital, interest, mora) {
     }
 }
 
+/* =========================================
+   DUE CHART - #E
+========================================= */
+function initDueChart() {
+    const ctx = document.getElementById('dueChart');
+    if (!ctx) return;
+
+    dueChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: [], datasets: [{ label: 'Por cobrar S/', data: [], backgroundColor: 'rgba(0, 228, 161, 0.7)', borderColor: 'rgba(0, 228, 161, 1)', borderRadius: 6, borderWidth: 0 }] },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => ' S/ ' + c.parsed.y.toFixed(2) } } },
+            scales: {
+                x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94A3B8', font: { size: 10 } } },
+                y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#94A3B8', font: { size: 10 }, callback: v => 'S/ ' + v } }
+            }
+        }
+    });
+}
+
+function renderDueChart() {
+    if (!dueChart) return;
+    const months = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    const today  = new Date();
+    const labels = [];
+    const data   = [];
+
+    for (let i = 0; i < 6; i++) {
+        const d = new Date(today.getFullYear(), today.getMonth() + i, 1);
+        labels.push(months[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2));
+        const monthYear = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        let total = 0;
+        loans.forEach(l => {
+            if (l.isArchived) return;
+            if (l.dueDate && l.dueDate.startsWith(monthYear)) {
+                const { restante } = getLoanSummary(l);
+                if (restante > 0) total += restante;
+            }
+        });
+        data.push(parseFloat(total.toFixed(2)));
+    }
+
+    dueChart.data.labels = labels;
+    dueChart.data.datasets[0].data = data;
+    dueChart.update();
+}
+
+/* =========================================
+   CLIENT HISTORY MODAL - #H
+========================================= */
+window.openClientModal = function(name) {
+    const modal  = document.getElementById('client-modal');
+    const title  = document.getElementById('client-modal-name');
+    const body   = document.getElementById('client-modal-body');
+    if (!modal) return;
+
+    const clientLoans = loans.filter(l => l.name === name);
+    title.textContent = name;
+
+    let totalBorrowed = 0, totalPaid = 0, totalDue = 0;
+    let html = '';
+
+    clientLoans.forEach(l => {
+        const { abonado, restante, mora } = getLoanSummary(l);
+        totalBorrowed += l.amount || 0;
+        totalPaid     += abonado;
+        totalDue      += restante;
+        const statusCls = l.isArchived ? 'status-paid' : restante <= 0 ? 'status-paid' : 'status-warn';
+        const statusLbl = l.isArchived ? 'Cerrado' : restante <= 0 ? 'Saldado' : 'Activo';
+        html += `
+        <div class="client-loan-card">
+            <div class="client-loan-header">
+                <span class="status-badge ${statusCls}">${statusLbl}</span>
+                <span class="text-muted text-sm">${formatObjDate(l.date)} → ${formatObjDate(l.dueDate)}</span>
+            </div>
+            <div class="client-loan-row">
+                <span>Capital</span><strong>S/ ${(l.amount||0).toFixed(2)}</strong>
+            </div>
+            <div class="client-loan-row">
+                <span>Total con interés</span><strong>S/ ${(l.total||0).toFixed(2)}</strong>
+            </div>
+            <div class="client-loan-row">
+                <span>Abonado</span><strong class="text-accent">S/ ${abonado.toFixed(2)}</strong>
+            </div>
+            <div class="client-loan-row">
+                <span>Restante</span><strong class="${restante>0?'text-danger':'text-muted'}">S/ ${restante.toFixed(2)}</strong>
+            </div>
+            ${l.notes ? `<div class="client-loan-note"><i data-lucide="file-text" style="width:12px;"></i> ${l.notes}</div>` : ''}
+        </div>`;
+    });
+
+    body.innerHTML = `
+        <div class="client-summary-bar">
+            <div><span class="text-muted text-sm">Préstamos</span><strong>${clientLoans.length}</strong></div>
+            <div><span class="text-muted text-sm">Total prestado</span><strong>S/ ${totalBorrowed.toFixed(2)}</strong></div>
+            <div><span class="text-muted text-sm">Total pagado</span><strong class="text-accent">S/ ${totalPaid.toFixed(2)}</strong></div>
+            <div><span class="text-muted text-sm">Saldo pendiente</span><strong class="${totalDue>0?'text-danger':'text-muted'}">S/ ${totalDue.toFixed(2)}</strong></div>
+        </div>
+        ${html || '<p class="text-muted text-sm" style="text-align:center;padding:1rem;">Sin préstamos registrados.</p>'}`;
+
+    lucide.createIcons();
+    modal.classList.remove('hidden');
+};
 
 /* =========================================
    INDEXED DB LOGIC
@@ -286,15 +506,31 @@ function loadDataFromDB() {
     request.onsuccess = () => {
         let results = request.result || [];
         loans = results.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
-        
-        loans.forEach(l => {
-            if (!l.abonos) l.abonos = [];
-            if (!l.dueDate) l.dueDate = l.date;
-            if (!l.quotas) l.quotas = 1;
-        });
 
-        renderTable(loans);
-        updateMetrics();
+        // #1 – Migrate legacy loans that don't have months saved
+        const migratePromises = [];
+        loans.forEach(l => {
+            if (!l.abonos)  l.abonos  = [];
+            if (!l.dueDate) l.dueDate = l.date;
+            if (!l.quotas)  l.quotas  = 1;
+            if (!l.months && l.date && l.dueDate) {
+                l.months = calcMonths(l.date, l.dueDate);
+                const m = l.months;
+                const r = l.interestVal || 0;
+                const a = l.amount || 0;
+                if (l.interestMode === 'fixed') {
+                    l.interest = r * m;
+                } else {
+                    l.interest = a * (r / 100) * m;
+                }
+                l.total = a + l.interest;
+                migratePromises.push(putLoanToDB(l));
+            }
+        });
+        Promise.all(migratePromises).then(() => {
+            renderTable(loans);
+            updateMetrics();
+        });
     };
 }
 
@@ -321,12 +557,27 @@ function deleteLoanFromDB(id) {
 /* =========================================
    CALCULATIONS
 ========================================= */
-function calcTotalPay(amount, rate, mode = 'percent') {
+// Calcula los meses completos entre dos fechas (mínimo 1)
+function calcMonths(startDateStr, endDateStr) {
+    if (!startDateStr || !endDateStr) return 1;
+    const start = new Date(startDateStr + 'T12:00:00');
+    const end   = new Date(endDateStr   + 'T12:00:00');
+    if (end <= start) return 1;
+    const months = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth());
+    return Math.max(1, months);
+}
+
+function calcTotalPay(amount, rate, mode = 'percent', months = 1) {
+    const a = Number(amount) || 0;
+    const r = Number(rate)   || 0;
+    const m = Math.max(1, Number(months) || 1);
     if (mode === 'fixed') {
-        return amount + rate;
+        // Interés fijo = monto fijo × meses
+        return a + (r * m);
     }
-    const interest = amount * (rate / 100);
-    return amount + interest;
+    // Interés porcentual = capital × (tasa/100) × meses
+    const interest = a * (r / 100) * m;
+    return a + interest;
 }
 
 function calculatePenalty(loan) {
@@ -337,8 +588,8 @@ function calculatePenalty(loan) {
     const diffTime = today - due;
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    const abonado = loan.abonos ? loan.abonos.reduce((sum, a) => sum + a.amount, 0) : 0;
-    const baseRestante = loan.total - abonado;
+    const abonado = loan.abonos ? loan.abonos.reduce((sum, a) => sum + (Number(a.amount) || 0), 0) : 0;
+    const baseRestante = (Number(loan.total) || 0) - abonado;
 
     let mora = 0;
     if (diffDays > 0 && baseRestante > 0) {
@@ -350,8 +601,8 @@ function calculatePenalty(loan) {
 
 function getLoanSummary(loan) {
     const { mora, baseRestante, diffDays } = calculatePenalty(loan);
-    const abonado = loan.abonos ? loan.abonos.reduce((sum, a) => sum + a.amount, 0) : 0;
-    const restanteTotal = (loan.total + mora) - abonado;
+    const abonado = loan.abonos ? loan.abonos.reduce((sum, a) => sum + (Number(a.amount) || 0), 0) : 0;
+    const restanteTotal = (Number(loan.total) || 0) + Number(mora) - abonado;
     
     return { abonado, restante: restanteTotal, mora, diffDays };
 }
@@ -368,11 +619,23 @@ function getStatus(loan, restante, diffDays) {
 ========================================= */
 function updatePreview() {
     const amount = parseFloat(loanAmountInput.value) || 0;
-    const rate = parseFloat(interestRateInput.value) || 0;
-    
-    const mode = interestModeSelect.value;
-    const total = calcTotalPay(amount, rate, mode);
+    const rate   = parseFloat(interestRateInput.value) || 0;
+    const mode   = interestModeSelect.value;
+    const months = calcMonths(loanDateInput.value, dueDateInput.value);
+    const total  = calcTotalPay(amount, rate, mode, months);
+    const interest = total - amount;
+
     previewTotal.textContent = `S/ ${total.toFixed(2)}`;
+
+    // Mostrar detalle de meses e interés en el preview
+    let detailEl = document.getElementById('preview-detail');
+    if (!detailEl) {
+        detailEl = document.createElement('div');
+        detailEl.id = 'preview-detail';
+        detailEl.style.cssText = 'font-size:0.78rem; color: var(--text-secondary); margin-top:4px;';
+        previewTotal.parentElement.parentElement.appendChild(detailEl);
+    }
+    detailEl.textContent = `${months} mes${months !== 1 ? 'es' : ''} · Interés: S/ ${interest.toFixed(2)} · Cuota est.: S/ ${(total / months).toFixed(2)}/mes`;
 }
 
 async function handleAddOrEditLoan(e) {
@@ -391,12 +654,21 @@ async function handleAddOrEditLoan(e) {
     const dateStr = loanDateInput.value;
     const dueDateStr = dueDateInput.value;
 
-    if (!name || isNaN(amount) || amount <= 0 || !dateStr || !dueDateStr) return;
+    if (!name || isNaN(amount) || amount <= 0 || !dateStr || !dueDateStr) {
+        showAlert("Por favor, completa los campos obligatorios (Nombre, Monto y Fechas).", 'danger');
+        return;
+    }
+    // #3 – Validar que fecha de vencimiento sea posterior al préstamo
+    if (new Date(dueDateStr) <= new Date(dateStr)) {
+        showAlert("⚠️ La fecha de vencimiento debe ser posterior a la fecha del préstamo.", 'danger');
+        return;
+    }
     
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i data-lucide="loader" class="pulse"></i> Procesando...';
 
-    const totalToPay = calcTotalPay(amount, rate, mode);
+    const months = calcMonths(dateStr, dueDateStr);
+    const totalToPay = calcTotalPay(amount, rate, mode, months);
 
     if (editId) {
         const existingId = loans.findIndex(l => l.id === editId);
@@ -408,20 +680,25 @@ async function handleAddOrEditLoan(e) {
             loans[existingId].cip = cip;
             loans[existingId].work = work;
             loans[existingId].amount = amount;
-            loans[existingId].interest = (mode === 'fixed') ? rate : (amount * (rate/100));
+            loans[existingId].interest = (mode === 'fixed') ? rate * months : (amount * (rate/100) * months);
             loans[existingId].interestMode = mode;
             loans[existingId].interestVal = rate;
+            loans[existingId].months = months;
             loans[existingId].total = totalToPay;
             loans[existingId].date = dateStr;
             loans[existingId].dueDate = dueDateStr;
+            loans[existingId].notes = loanNotesInput ? loanNotesInput.value.trim() : ''; // #I
             await putLoanToDB(loans[existingId]);
         }
         window.cancelEdit();
     } else {
 
 
+        // Read files if any
+        const attachments = await processFiles(loanFilesInput.files);
+
         const newLoan = {
-            id: crypto.randomUUID(),
+            id: (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : `id-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
             name: name,
             dni: dni,
             phone: phone,
@@ -429,19 +706,31 @@ async function handleAddOrEditLoan(e) {
             cip: cip,
             work: work,
             amount: amount,
-            interest: (mode === 'fixed') ? rate : (amount * (rate/100)),
+            interest: (mode === 'fixed') ? rate * months : (amount * (rate/100) * months),
             interestMode: mode,
             interestVal: rate,
+            months: months,
             total: totalToPay,
             date: dateStr,
             dueDate: dueDateStr,
+            notes: loanNotesInput ? loanNotesInput.value.trim() : '', // #I
             abonos: [], 
+            attachments: attachments,
             createdAt: new Date().toISOString()
         };
         
         await putLoanToDB(newLoan);
         loans.unshift(newLoan);
         form.reset();
+        
+        // Reset file input label
+        const fileLabel = document.querySelector('.file-upload-label');
+        if (fileLabel) {
+            fileLabel.classList.remove('has-file');
+            fileLabel.innerHTML = '<i data-lucide="paperclip"></i> Seleccionar Archivos';
+            lucide.createIcons();
+        }
+        loanFilesInput.value = ""; // Clear file input
         
         loanDateInput.valueAsDate = new Date();
         const nextM = new Date(); nextM.setDate(nextM.getDate() + 30);
@@ -496,7 +785,8 @@ window.startEditMode = function(id) {
     
     loanDateInput.value = loan.date;
     dueDateInput.value = loan.dueDate;
-    
+    if (loanNotesInput) loanNotesInput.value = loan.notes || ''; // #I
+
     updatePreview();
 
     formTitle.innerHTML = '<i data-lucide="edit"></i> Editando Operación';
@@ -569,7 +859,7 @@ async function handleAddPayment(e) {
     showVoucherModal(loanObj.name, amount, prevRestante, newRestante, date, loanObj.phone);
     
     if(newRestante <= 0) {
-        setTimeout(() => alert("¡Operación Salda con Éxito!"), 600);
+        setTimeout(() => showAlert('¡Operación Saldada con Éxito! 🎉', 'success'), 400);
     }
 }
 
@@ -603,11 +893,135 @@ function sendWaMessage() {
 
 
 /* =========================================
+   UPCOMING ALERTS - #11
+========================================= */
+function renderUpcomingAlerts(activeLoans) {
+    const container = document.getElementById('upcoming-alerts');
+    if (!container) return;
+
+    const today = new Date(); today.setHours(0,0,0,0);
+    const relevant = activeLoans
+        .filter(l => {
+            const { restante } = getLoanSummary(l);
+            if (restante <= 0) return false;
+            const due = new Date(l.dueDate + 'T12:00:00');
+            const diff = Math.ceil((due - today) / (1000*60*60*24));
+            return diff <= 7; // Vence en 7 días o ya venció
+        })
+        .sort((a,b) => new Date(a.dueDate) - new Date(b.dueDate));
+
+    if (relevant.length === 0) {
+        container.innerHTML = '';
+        container.classList.add('hidden');
+        return;
+    }
+    container.classList.remove('hidden');
+    container.innerHTML = `
+        <div class="alert-banner">
+            <div class="alert-banner-title">
+                <i data-lucide="bell-ring" style="width:16px;height:16px;"></i>
+                <strong>${relevant.length} vencimiento${relevant.length>1?'s':''} próximo${relevant.length>1?'s':''} (≤7 días)</strong>
+            </div>
+            <div class="alert-chips">
+                ${relevant.map(l => {
+                    const due = new Date(l.dueDate + 'T12:00:00');
+                    const diff = Math.ceil((due - today) / (1000*60*60*24));
+                    const cls  = diff < 0 ? 'chip-danger' : diff <= 3 ? 'chip-warn' : 'chip-info';
+                    const label = diff < 0 ? `${Math.abs(diff)}d mora` : diff === 0 ? 'Hoy!' : `${diff}d`;
+                    const { restante } = getLoanSummary(l);
+                    return `<span class="alert-chip ${cls}">${l.name.split(' ')[0]} &bull; S/${restante.toFixed(0)} &bull; ${label}</span>`;
+                }).join('')}
+            </div>
+        </div>`;
+    lucide.createIcons();
+}
+
+/* =========================================
    RENDERING & METRICS
 ========================================= */
+// #7 - Sortable column helper
+function getSortValue(loan, col) {
+    if (col === 'name')    return loan.name.toLowerCase();
+    if (col === 'total')   return loan.total || 0;
+    if (col === 'dueDate') return loan.dueDate || '';
+    return '';
+}
+
+function applySortAndRender(dataToRender) {
+    let data = [...dataToRender];
+    if (sortState.col) {
+        data.sort((a,b) => {
+            const va = getSortValue(a, sortState.col);
+            const vb = getSortValue(b, sortState.col);
+            if (va < vb) return sortState.asc ? -1 :  1;
+            if (va > vb) return sortState.asc ?  1 : -1;
+            return 0;
+        });
+    }
+    renderTable(data);
+}
+
+window.handleSortClick = function(col) {
+    if (sortState.col === col) {
+        sortState.asc = !sortState.asc;
+    } else {
+        sortState.col = col;
+        sortState.asc = true;
+    }
+    applySearchAndFilter();
+};
+
+window.handleFilterClick = function(filter) {
+    currentFilter = filter;
+    
+    // Update UI buttons
+    const buttons = document.querySelectorAll('.filter-btn');
+    buttons.forEach(btn => {
+        const text = btn.textContent.toLowerCase();
+        const isMatch = (filter === 'all' && text === 'todos') ||
+                        (filter === 'mora' && text.includes('mora')) ||
+                        (filter === 'today' && text.includes('hoy')) ||
+                        (filter === 'soon' && text.includes('pronto'));
+        
+        if (isMatch) btn.classList.add('active');
+        else btn.classList.remove('active');
+    });
+
+    applySearchAndFilter();
+};
+
+function applySearchAndFilter() {
+    const term = searchInput.value.toLowerCase().trim();
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    let filtered = loans.filter(l => {
+        // 1. Search Mask
+        const matchesSearch = l.name.toLowerCase().includes(term) ||
+            (l.dni   && l.dni.toLowerCase().includes(term))  ||
+            (l.phone && l.phone.toLowerCase().includes(term));
+        
+        if (!matchesSearch) return false;
+
+        // 2. Status Filter
+        if (currentFilter === 'all') return true;
+        
+        const { restante } = getLoanSummary(l);
+        if (restante <= 0) return false; // Filters only apply to active debt
+        
+        const { diffDays } = calculatePenalty(l);
+        
+        if (currentFilter === 'mora') return diffDays > 0;
+        if (currentFilter === 'today') return diffDays === 0;
+        if (currentFilter === 'soon') return diffDays < 0 && diffDays >= -3;
+        
+        return true;
+    });
+
+    applySortAndRender(filtered);
+}
+
 function getStatus(loan, restante, diffDays) {
     if (restante <= 0) return { label: "Saldado", class: "status-paid", icon: 'check-circle'};
-    
     if (diffDays > 0) {
         return { label: `Mora: ${diffDays}d`, class: "status-danger", icon: 'alert-triangle'};
     } else if (diffDays >= -3 && diffDays <= 0) {
@@ -626,9 +1040,12 @@ function formatObjDate(dateStr) {
 function renderTable(dataToRender) {
     loansTbody.innerHTML = '';
     archiveTbody.innerHTML = '';
-    
-    const activeLoans = dataToRender.filter(l => !l.isArchived);
-    const archivedLoans = dataToRender.filter(l => l.isArchived);
+
+    const activeLoans   = dataToRender.filter(l => !l.isArchived);
+    const archivedLoans = dataToRender.filter(l =>  l.isArchived);
+
+    // #11 - Upcoming alerts
+    renderUpcomingAlerts(activeLoans);
 
     if (activeLoans.length === 0) {
         emptyState.classList.remove('hidden');
@@ -641,16 +1058,36 @@ function renderTable(dataToRender) {
             const { abonado, restante, mora } = getLoanSummary(loan);
             const { diffDays } = calculatePenalty(loan);
             const status = getStatus(loan, restante, diffDays);
-            
+
+            // #5 - Cuota mensual
+            const months = loan.months || 1;
+            const quota  = months > 1 ? (loan.total / months).toFixed(2) : null;
+
             const tr = document.createElement('tr');
             tr.style.animationDelay = `${idx * 0.05}s`;
             tr.className = 'fade-in';
             tr.innerHTML = `
                 <td>
-                    <div class="client-name">${loan.name}</div>
-                    ${loan.phone ? `<div class="client-notes"><i data-lucide="smartphone" style="width:12px;color: #25D366;"></i> <a href="https://wa.me/${loan.phone.replace(/[^0-9]/g, '')}" target="_blank" style="color:#25D366; text-decoration:none;">${loan.phone}</a></div>` : ''}
+                    <div class="client-row-info">
+                        <div class="client-name-group">
+                            <div class="client-name">${loan.name}</div>
+                            <button class="btn-history-small" onclick="openClientModal('${loan.name}')" title="Ver historial completo">
+                                <i data-lucide="history"></i>
+                            </button>
+                        </div>
+                        ${loan.phone ? `<div class="client-notes"><i data-lucide="smartphone" style="width:12px;color:#25D366;"></i> <a href="https://wa.me/${loan.phone.replace(/[^0-9]/g,'')}" target="_blank" style="color:#25D366;text-decoration:none;">${loan.phone}</a></div>` : ''}
+                        ${loan.notes ? `<div class="client-loan-note-table"><i data-lucide="file-text" style="width:11px;"></i> ${loan.notes}</div>` : ''}
+                        <div class="months-badge">
+                            <i data-lucide="calendar-days" style="width:11px;height:11px;"></i>
+                            ${months} mes${months>1?'es':''}
+                            ${loan.interestVal ? `&bull; ${loan.interestVal}${loan.interestMode==='fixed'?'S/':'%'}/mes` : ''}
+                        </div>
+                    </div>
                 </td>
-                <td class="font-bold">S/ ${loan.total.toFixed(2)}</td>
+                <td class="font-bold">
+                    S/ ${loan.total.toFixed(2)}
+                    ${quota ? `<div class="quota-hint">S/ ${quota}/mes</div>` : ''}
+                </td>
                 <td class="${mora > 0 ? 'text-danger font-bold' : 'text-muted'}">
                     ${mora > 0 ? '+ S/ ' + mora.toFixed(2) : '---'}
                 </td>
@@ -659,14 +1096,14 @@ function renderTable(dataToRender) {
                     S/ ${restante.toFixed(2)}
                 </td>
                 <td>
-                    <span class="status-badge ${status.class}"><i data-lucide="${status.icon}" style="width:12px; height:12px;"></i> ${status.label}</span>
+                    <span class="status-badge ${status.class}"><i data-lucide="${status.icon}" style="width:12px;height:12px;"></i> ${status.label}</span>
                     <div class="text-muted text-sm mt-1">Límite: ${formatObjDate(loan.dueDate)}</div>
                 </td>
                 <td class="actions-cell">
-                    <button class="btn btn-icon btn-pay" onclick="openPayModal('${loan.id}')" title="Abonar Pago" ${restante<=0 ? 'disabled' : ''}>
+                    <button class="btn btn-icon btn-pay" onclick="openPayModal('${loan.id}')" title="Abonar Pago" ${restante<=0?'disabled':''}>
                         <i data-lucide="dollar-sign"></i> <span>Abono</span>
                     </button>
-                    <button class="btn btn-icon btn-reminder" onclick="sendReminder('${loan.id}')" title="Enviar Recordatorio por WhatsApp" ${restante<=0 ? 'disabled' : ''}>
+                    <button class="btn btn-icon btn-reminder" onclick="sendReminder('${loan.id}')" title="Enviar Recordatorio por WhatsApp" ${restante<=0?'disabled':''}>
                         <i data-lucide="bell"></i> <span>Cobrar</span>
                     </button>
                     <button class="btn btn-icon btn-contract" onclick="generateContract('${loan.id}')" title="Imprimir Pagaré / Contrato">
@@ -675,6 +1112,9 @@ function renderTable(dataToRender) {
                     <button class="btn btn-icon btn-edit" onclick="startEditMode('${loan.id}')" title="Editar Info">
                         <i data-lucide="edit"></i> <span>Edit</span>
                     </button>
+                    <button class="btn btn-icon btn-files" onclick="openFilesModal('${loan.id}')" title="Ver Archivos / Documentos">
+                        <i data-lucide="paperclip"></i> <span>Archivos ${loan.attachments && loan.attachments.length > 0 ? `(${loan.attachments.length})` : ''}</span>
+                    </button>
                     <button class="btn btn-icon btn-delete" onclick="handleArchiveLoan('${loan.id}')" title="Mover al Archivo (Cerrar Operación)">
                         <i data-lucide="archive"></i> <span>Cerrar</span>
                     </button>
@@ -682,26 +1122,31 @@ function renderTable(dataToRender) {
             `;
             loansTbody.appendChild(tr);
         });
-        
         refreshIcons();
     }
 
+    // #13 - Improved archive table
     if (archivedLoans.length === 0) {
         archiveEmptyState.classList.remove('hidden');
         document.getElementById('archive-table').classList.add('hidden');
     } else {
         archiveEmptyState.classList.add('hidden');
         document.getElementById('archive-table').classList.remove('hidden');
-        archivedLoans.forEach((loan, idx) => {
+        archivedLoans.forEach((loan) => {
+            const abonado = loan.abonos ? loan.abonos.reduce((s,a) => s + (Number(a.amount)||0), 0) : 0;
             const tr = document.createElement('tr');
             tr.className = 'fade-in';
             tr.innerHTML = `
                 <td>
                     <div class="client-name">${loan.name}</div>
-                    <div class="client-notes text-muted text-sm">Archivado</div>
+                    <div class="text-muted text-sm">${loan.dni ? 'DNI: '+loan.dni : ''}</div>
                 </td>
-                <td class="font-bold">S/ ${loan.amount.toFixed(2)}</td>
-                <td><span class="status-badge status-paid"><i data-lucide="check-circle" style="width:12px; height:12px;"></i> Cerrado</span></td>
+                <td class="font-bold">S/ ${(loan.amount||0).toFixed(2)}</td>
+                <td class="text-accent">S/ ${(loan.interest||0).toFixed(2)}</td>
+                <td class="font-bold">S/ ${(loan.total||0).toFixed(2)}</td>
+                <td class="text-muted">${loan.months || 1} mes${(loan.months||1)>1?'es':''}</td>
+                <td class="text-muted">${formatObjDate(loan.date)} &rarr; ${formatObjDate(loan.dueDate)}</td>
+                <td><span class="status-badge status-paid"><i data-lucide="check-circle" style="width:12px;height:12px;"></i> Cerrado</span></td>
                 <td class="actions-cell">
                     <button class="btn btn-sm btn-secondary" onclick="handleRestoreLoan('${loan.id}')" title="Restaurar a Activos">
                         <i data-lucide="refresh-cw"></i> <span>Restaurar</span>
@@ -727,9 +1172,9 @@ function updateMetrics() {
         if (!loan.isArchived) {
             const { restante, mora } = getLoanSummary(loan);
             if (restante > 0) {
-                totalC += loan.amount;
-                totalI += loan.interest;
-                totalP += mora;
+                totalC += Number(loan.amount) || 0;
+                totalI += Number(loan.interest) || 0;
+                totalP += Number(mora) || 0;
                 activeClients++;
             }
         }
@@ -741,6 +1186,7 @@ function updateMetrics() {
     clientsCountEl.textContent = activeClients;
 
     updateChartData(totalC, totalI, totalP);
+    renderDueChart(); // #E
 }
 
 window.closeModal = function(modalId) {
@@ -895,7 +1341,7 @@ window.generateContract = function(id) {
 }
 
 window.handleArchiveLoan = async function(id) {
-    if(confirm('¿Seguro de mover esta operación al Historial de Cancelados/Cerrados?')) {
+    showConfirm('¿Seguro de mover esta operación al Historial de Cancelados/Cerrados?', async () => {
         const loan = loans.find(l => l.id === id);
         if(loan) {
             loan.isArchived = true;
@@ -903,11 +1349,11 @@ window.handleArchiveLoan = async function(id) {
             renderTable(loans);
             updateMetrics();
         }
-    }
+    });
 }
 
 window.handleRestoreLoan = async function(id) {
-    if(confirm('¿Seguro de restaurar esta operación a tus créditos activos?')) {
+    showConfirm('¿Seguro de restaurar esta operación a tus créditos activos?', async () => {
         const loan = loans.find(l => l.id === id);
         if(loan) {
             loan.isArchived = false;
@@ -915,30 +1361,26 @@ window.handleRestoreLoan = async function(id) {
             renderTable(loans);
             updateMetrics();
         }
-    }
+    });
 }
 
 window.handleDeletePermanent = async function(id) {
-    if(confirm('⚠️ ¿ESTÁS SEGURO?\n\nEsta acción eliminará este registro DEL TODO y no se podrá recuperar jamás. ¿Proceder?')) {
+    showConfirm('⚠️ ¿ELIMINAR DEFINITIVAMENTE?\nEsta acción no se puede deshacer.', async () => {
         await deleteLoanFromDB(id);
         const idx = loans.findIndex(l => l.id === id);
-        if(idx !== -1) {
-            loans.splice(idx, 1);
-        }
+        if(idx !== -1) loans.splice(idx, 1);
         renderTable(loans);
         updateMetrics();
-    }
+    });
 }
 
 function handleSearch(e) {
-    const term = searchInput.value.toLowerCase();
-    const filtered = loans.filter(l => l.name.toLowerCase().includes(term));
-    renderTable(filtered);
+    applySearchAndFilter();
 }
 
 function exportToCSV() {
     if(loans.length === 0) {
-        alert("Portafolio vacío."); return;
+        showAlert("Portafolio vacío.", 'info'); return;
     }
 
     const headers = ["ID", "Cliente", "Capital_Base", "Interes", "Total_Cobrar", "Total_Abonado", "Deuda_Restante", "Mora_Actual", "Fecha", "Vencimiento", "Notas"];
@@ -972,7 +1414,7 @@ function exportToCSV() {
 
 function exportToJSON() {
     if(loans.length === 0) {
-        alert("Portafolio vacío."); return;
+        showAlert("Portafolio vacío.", 'info'); return;
     }
     const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(loans));
     const link = document.createElement("a");
@@ -1010,6 +1452,97 @@ function importFromJSON(e) {
         }
     };
     reader.readAsText(file);
+}
+
+/* =========================================
+   FILE MANAGEMENT HELPERS
+========================================= */
+async function processFiles(fileList) {
+    const promises = Array.from(fileList).map(file => {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                resolve({
+                    name: file.name,
+                    type: file.type,
+                    size: file.size,
+                    data: e.target.result
+                });
+            };
+            reader.readAsDataURL(file);
+        });
+    });
+    return Promise.all(promises);
+}
+
+window.openFilesModal = function(id) {
+    const loan = loans.find(l => l.id === id);
+    if (!loan) return;
+
+    currentFilesLoanId.value = id;
+    filesClientName.textContent = loan.name;
+    renderFilesList(loan);
+    filesModal.classList.remove('hidden');
+}
+
+function renderFilesList(loan) {
+    filesList.innerHTML = "";
+    if (!loan.attachments || loan.attachments.length === 0) {
+        filesEmpty.classList.remove('hidden');
+        return;
+    }
+    filesEmpty.classList.add('hidden');
+
+    loan.attachments.forEach((file, index) => {
+        const div = document.createElement('div');
+        div.className = 'file-card fade-in';
+        
+        const isImage = file.type.startsWith('image/');
+        const preview = isImage 
+            ? `<img src="${file.data}" class="file-preview-img">` 
+            : `<div class="file-icon-box"><i data-lucide="file-text"></i></div>`;
+            
+        div.innerHTML = `
+            ${preview}
+            <div class="file-info">
+                <span class="file-name" title="${file.name}">${file.name}</span>
+                <span class="file-size">${(file.size / 1024).toFixed(1)} KB</span>
+            </div>
+            <div class="file-actions">
+                <a href="${file.data}" download="${file.name}" class="btn-file-icon text-primary" title="Descargar"><i data-lucide="download"></i></a>
+                <button onclick="handleDeleteFile('${loan.id}', ${index})" class="btn-file-icon text-danger" title="Eliminar"><i data-lucide="trash-2"></i></button>
+            </div>
+        `;
+        filesList.appendChild(div);
+    });
+    lucide.createIcons();
+}
+
+window.handleUploadMoreFiles = async function() {
+    const id = currentFilesLoanId.value;
+    const loan = loans.find(l => l.id === id);
+    if (!loan || !addMoreFilesInput.files.length) return;
+
+    const newAttachments = await processFiles(addMoreFilesInput.files);
+    if (!loan.attachments) loan.attachments = [];
+    loan.attachments.push(...newAttachments);
+
+    await putLoanToDB(loan);
+    addMoreFilesInput.value = "";
+    renderFilesList(loan);
+    
+    // Proactively refresh table just in case (though not strictly needed here)
+    renderTable(loans);
+}
+
+window.handleDeleteFile = async function(loanId, index) {
+    if (!confirm("¿Eliminar este archivo?")) return;
+    const loan = loans.find(l => l.id === loanId);
+    if (!loan || !loan.attachments) return;
+
+    loan.attachments.splice(index, 1);
+    await putLoanToDB(loan);
+    renderFilesList(loan);
 }
 
 // Service Worker for PWA
